@@ -32,6 +32,7 @@ final class DashboardController extends Controller
             'user_email' => (string) Session::get('user_email', ''),
             'email_verified' => $emailVerified,
             'show_team_nav' => in_array($ctx['role'], ['owner', 'admin'], true),
+            'can_manage_clients' => in_array($ctx['role'], ['owner', 'admin', 'member'], true),
             'error' => Session::flash('error') ?? '',
             'success' => Session::flash('success') ?? '',
         ]);

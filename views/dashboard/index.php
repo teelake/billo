@@ -9,8 +9,10 @@ use App\Core\Csrf;
 /** @var string $user_email */
 /** @var bool $email_verified */
 /** @var bool $show_team_nav */
+/** @var bool $can_manage_clients */
 /** @var string $error */
 /** @var string $success */
+$can_manage_clients = !empty($can_manage_clients);
 
 $orgName = is_array($organization) ? (string) ($organization['name'] ?? 'Your organization') : 'Your organization';
 $title = 'Dashboard — billo';
@@ -43,8 +45,14 @@ ob_start();
             <p class="eyebrow eyebrow--dark">You’re in</p>
             <h1 class="welcome-card__title"><?= billo_e($orgName) ?></h1>
             <p class="welcome-card__text">
-                Signed in as <strong><?= billo_e($user_email) ?></strong>. Invoice tools, branding, and FIRS-ready workflows will plug in here next.
+                Signed in as <strong><?= billo_e($user_email) ?></strong>. Add clients you bill, then we’ll attach invoices and branding here.
             </p>
+            <div class="welcome-card__actions">
+                <a class="btn btn--primary" href="<?= billo_e(billo_url('/clients')) ?>">Manage clients</a>
+                <?php if ($can_manage_clients): ?>
+                    <a class="btn btn--secondary" href="<?= billo_e(billo_url('/clients/create')) ?>">New client</a>
+                <?php endif; ?>
+            </div>
             <div class="welcome-card__chips">
                 <span class="chip">organization_id · <?= isset($organization['id']) ? (int) $organization['id'] : '—' ?></span>
                 <span class="chip">Role · <?= billo_e($role) ?></span>

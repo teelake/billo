@@ -932,6 +932,13 @@ a:hover {
     max-width: 40rem;
 }
 
+.welcome-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+}
+
 .welcome-card__chips {
     display: flex;
     flex-wrap: wrap;
@@ -1072,4 +1079,76 @@ a:hover {
 
 select.input {
     cursor: pointer;
+}
+
+/* Clients & app pages */
+.page-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.page-head__title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+    margin: 0 0 0.35rem;
+    letter-spacing: -0.02em;
+}
+
+.page-head__lead {
+    margin: 0;
+    color: var(--color-muted);
+    max-width: 36rem;
+}
+
+.hint-banner {
+    background: rgba(30, 58, 138, 0.08);
+    border: 1px solid rgba(30, 58, 138, 0.15);
+    color: var(--color-secondary);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.95rem;
+}
+
+.label__req {
+    color: var(--color-danger);
+    font-weight: 700;
+}
+
+.form--spaced {
+    gap: 1.15rem;
+}
+
+.form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.input--textarea {
+    resize: vertical;
+    min-height: 5rem;
+    line-height: 1.5;
+}
+
+.data-table--comfortable th,
+.data-table--comfortable td {
+    padding: 0.85rem 1rem;
+    vertical-align: top;
+}
+
+.data-table__actions {
+    white-space: nowrap;
+    text-align: right;
+}
+
+.data-table__actions .inline-form {
+    display: inline-block;
+    vertical-align: middle;
 }
