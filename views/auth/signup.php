@@ -15,7 +15,7 @@ $isInvite = $invite !== null;
 $title = $isInvite ? 'Join organization — billo' : 'Sign up — billo';
 ob_start();
 ?>
-<div class="auth-card">
+<div class="auth-card auth-card--signup">
     <h1 class="auth-card__title"><?= $isInvite ? 'Join your team' : 'Create your workspace' ?></h1>
     <p class="auth-card__subtitle">
         <?= $isInvite
@@ -27,23 +27,38 @@ ob_start();
     <?php endif; ?>
     <form class="form" method="post" action="<?= billo_e(billo_url('/signup')) ?>" novalidate data-signup-form>
         <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
-        <div class="field">
-            <label class="label" for="name">Your name</label>
-            <input class="input" id="name" name="name" type="text" autocomplete="name" required maxlength="120" value="<?= billo_e($name) ?>" aria-describedby="name-feedback">
-            <p class="field-feedback" id="name-feedback" role="status" aria-live="polite"></p>
-        </div>
-        <?php if (!$isInvite): ?>
+        <?php if ($isInvite): ?>
+            <div class="field-grid field-grid--signup">
+                <div class="field">
+                    <label class="label" for="name">Your name</label>
+                    <input class="input" id="name" name="name" type="text" autocomplete="name" required maxlength="120" value="<?= billo_e($name) ?>" aria-describedby="name-feedback">
+                    <p class="field-feedback" id="name-feedback" role="status" aria-live="polite"></p>
+                </div>
+                <div class="field">
+                    <label class="label" for="email">Work email</label>
+                    <input class="input" id="email" name="email" type="email" inputmode="email" autocomplete="email" required value="<?= billo_e($email) ?>" aria-describedby="email-feedback" readonly aria-readonly="true">
+                    <p class="field-feedback" id="email-feedback" role="status" aria-live="polite"></p>
+                </div>
+            </div>
+        <?php else: ?>
+            <div class="field-grid field-grid--signup">
+                <div class="field">
+                    <label class="label" for="name">Your name</label>
+                    <input class="input" id="name" name="name" type="text" autocomplete="name" required maxlength="120" value="<?= billo_e($name) ?>" aria-describedby="name-feedback">
+                    <p class="field-feedback" id="name-feedback" role="status" aria-live="polite"></p>
+                </div>
+                <div class="field">
+                    <label class="label" for="organization_name">Organization name</label>
+                    <input class="input" id="organization_name" name="organization_name" type="text" autocomplete="organization" required maxlength="200" value="<?= billo_e($organization_name) ?>" aria-describedby="organization-feedback">
+                    <p class="field-feedback" id="organization-feedback" role="status" aria-live="polite"></p>
+                </div>
+            </div>
             <div class="field">
-                <label class="label" for="organization_name">Organization name</label>
-                <input class="input" id="organization_name" name="organization_name" type="text" autocomplete="organization" required maxlength="200" value="<?= billo_e($organization_name) ?>" aria-describedby="organization-feedback">
-                <p class="field-feedback" id="organization-feedback" role="status" aria-live="polite"></p>
+                <label class="label" for="email">Work email</label>
+                <input class="input" id="email" name="email" type="email" inputmode="email" autocomplete="email" required value="<?= billo_e($email) ?>" aria-describedby="email-feedback">
+                <p class="field-feedback" id="email-feedback" role="status" aria-live="polite"></p>
             </div>
         <?php endif; ?>
-        <div class="field">
-            <label class="label" for="email">Work email</label>
-            <input class="input" id="email" name="email" type="email" inputmode="email" autocomplete="email" required value="<?= billo_e($email) ?>" aria-describedby="email-feedback" <?= $isInvite ? 'readonly aria-readonly="true"' : '' ?>>
-            <p class="field-feedback" id="email-feedback" role="status" aria-live="polite"></p>
-        </div>
         <div class="field">
             <label class="label" for="password">Password</label>
             <input class="input" id="password" name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128" aria-describedby="password-hint password-strength">

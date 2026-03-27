@@ -778,6 +778,12 @@ a:hover {
     box-shadow: var(--shadow-md);
 }
 
+/* Wider card + room for two columns (name + org, or invite: name + email) */
+.auth-card--signup {
+    width: min(100%, 34rem);
+    max-width: 100%;
+}
+
 .auth-card__title {
     font-family: var(--font-display);
     font-weight: 700;
@@ -813,6 +819,13 @@ a:hover {
 
 @media (max-width: 520px) {
     .field-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Signup: stack a bit earlier on narrow phones so labels don’t feel squeezed */
+@media (max-width: 560px) {
+    .field-grid--signup {
         grid-template-columns: 1fr;
     }
 }

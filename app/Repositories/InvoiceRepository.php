@@ -481,5 +481,3 @@ final class InvoiceRepository
             ++$order;
         }
     }
-}
-
