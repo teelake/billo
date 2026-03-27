@@ -64,6 +64,27 @@ final class InvoiceRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /** @return list<array<string, mixed>> */
+    public function recentForOrganization(int $organizationId, int $limit = 8): array
+    {
+        $limit = max(1, min(25, $limit));
+        $kindSelect = self::invoicesTableHasInvoiceKindColumn()
+            ? 'i.invoice_kind'
+            : "'invoice' AS invoice_kind";
+        $sql = "SELECT i.id, i.invoice_number, i.status, {$kindSelect}, i.issue_date, i.due_date, i.currency,
+                       i.total, i.client_id, i.created_at,
+                       c.name AS client_name, c.company_name AS client_company
+                FROM invoices i
+                LEFT JOIN clients c ON c.id = i.client_id
+                WHERE i.organization_id = :organization_id
+                ORDER BY i.created_at DESC, i.id DESC
+                LIMIT {$limit}";
+        $stmt = Database::pdo()->prepare($sql);
+        $stmt->execute(['organization_id' => $organizationId]);
+        /** @var list<array<string, mixed>> */
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     /**
      * @return array<string, mixed>|null invoice row with key lines (list)
      */
