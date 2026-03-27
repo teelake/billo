@@ -30,9 +30,7 @@
     if (!tbody || !addBtn) {
         return;
     }
-    const taxOn = tbody.dataset.taxEnabled === "1";
-    const tplId = taxOn ? "invoice-line-empty-row" : "invoice-line-empty-row-no-tax";
-    const tpl = document.getElementById(tplId);
+    const tpl = document.getElementById("invoice-line-empty-row");
     if (!tpl || !(tpl instanceof HTMLTemplateElement)) {
         return;
     }
@@ -48,6 +46,7 @@
             });
         });
         tbody.dataset.nextIndex = String(rows.length);
+        window.dispatchEvent(new CustomEvent("billo-invoice-lines-changed"));
     };
 
     const bindRemove = (row) => {
@@ -73,6 +72,132 @@
     });
 
     renumber();
+})();
+
+/** Invoice form: live subtotal / VAT / WHT / total (matches server document-tax math) */
+(function () {
+    const root = document.querySelector("[data-invoice-form-totals]");
+    const tbody = document.querySelector("[data-invoice-lines]");
+    if (!root || !tbody) {
+        return;
+    }
+    const docTaxOn = root.getAttribute("data-doc-tax") === "1";
+
+    const whtRates = (() => {
+        const el = document.getElementById("billo-invoice-wht-rates");
+        if (!el) {
+            return {};
+        }
+        try {
+            const o = JSON.parse(el.textContent || "{}");
+            return o !== null && typeof o === "object" ? o : {};
+        } catch (_e) {
+            return {};
+        }
+    })();
+
+    const fmt = (cur, num) => {
+        const n = Number.isFinite(num) ? num : 0;
+        const s = n.toFixed(2);
+        return `${cur} ${s}`;
+    };
+
+    const lineSubtotal = () => {
+        let s = 0;
+        tbody.querySelectorAll("[data-invoice-line]").forEach((row) => {
+            const qEl = row.querySelector('[data-line-field="quantity"]');
+            const uEl = row.querySelector('[data-line-field="unit_amount"]');
+            const q = parseFloat(qEl instanceof HTMLInputElement ? qEl.value : "0");
+            const u = parseFloat(uEl instanceof HTMLInputElement ? uEl.value : "0");
+            if (!Number.isFinite(q) || !Number.isFinite(u)) {
+                return;
+            }
+            s += q * u;
+        });
+        return Math.round(s * 100) / 100;
+    };
+
+    const sync = () => {
+        const curSelect = document.getElementById("currency");
+        const cur = curSelect instanceof HTMLSelectElement ? curSelect.value : "NGN";
+        const sub = lineSubtotal();
+        let vat = 0;
+        let wht = 0;
+        let grand = sub;
+
+        const elSub = root.querySelector("[data-total-sub]");
+        const elTax = root.querySelector("[data-total-tax]");
+        const elGrand = root.querySelector("[data-total-grand]");
+
+        let taxDisplay = "—";
+
+        if (docTaxOn) {
+            const vatOn = document.getElementById("inv-apply-vat");
+            const vatRateEl = document.getElementById("inv-vat-rate");
+            const whtOn = document.getElementById("inv-apply-wht");
+            const whtSel = document.getElementById("inv-wht-id");
+            const vApply = vatOn instanceof HTMLInputElement ? vatOn.checked : false;
+            const wApply = whtOn instanceof HTMLInputElement ? whtOn.checked : false;
+            const vr = vatRateEl instanceof HTMLInputElement ? parseFloat(vatRateEl.value) : 0;
+            const wid = whtSel instanceof HTMLSelectElement ? whtSel.value : "";
+            const wr =
+                wid !== "" && Object.prototype.hasOwnProperty.call(whtRates, wid)
+                    ? Number(whtRates[wid])
+                    : NaN;
+
+            vat =
+                vApply && Number.isFinite(vr) ? Math.round(sub * (vr / 100) * 100) / 100 : 0;
+            const gross = Math.round((sub + vat) * 100) / 100;
+            wht =
+                wApply && Number.isFinite(wr)
+                    ? Math.round(sub * (wr / 100) * 100) / 100
+                    : 0;
+            grand = Math.round((gross - wht) * 100) / 100;
+            if (grand < 0) {
+                grand = 0;
+            }
+            const parts = [];
+            if (vApply && vat > 0.0001) {
+                parts.push(`VAT ${fmt(cur, vat)}`);
+            } else if (vApply) {
+                parts.push(`VAT ${fmt(cur, 0)}`);
+            }
+            if (wApply && wht > 0.0001) {
+                parts.push(`WHT ${fmt(cur, wht)} (deducted)`);
+            }
+            taxDisplay = parts.length ? parts.join(" · ") : "—";
+        } else {
+            grand = sub;
+        }
+
+        if (elSub) {
+            elSub.textContent = fmt(cur, sub);
+        }
+        if (elTax) {
+            elTax.textContent = taxDisplay;
+        }
+        if (elGrand) {
+            elGrand.innerHTML = `<strong>${fmt(cur, grand)}</strong>`;
+        }
+    };
+
+    tbody.addEventListener("input", (e) => {
+        if (e.target instanceof HTMLElement && e.target.closest("[data-invoice-line]")) {
+            sync();
+        }
+    });
+    document.addEventListener("billo-invoice-lines-changed", sync);
+    ["inv-apply-vat", "inv-apply-wht", "inv-wht-id", "currency"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener("change", sync);
+        }
+    });
+    const vatRate = document.getElementById("inv-vat-rate");
+    if (vatRate) {
+        vatRate.addEventListener("input", sync);
+    }
+    sync();
 })();
 
 /** Long forms: tab panels (invoice form, platform configuration, etc.) */

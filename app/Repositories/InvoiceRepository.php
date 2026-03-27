@@ -213,49 +213,88 @@ final class InvoiceRepository
             $pdo->beginTransaction();
 
             $invoiceNumber = $this->allocateInvoiceNumber($pdo, $organizationId);
+            $hasKind = self::invoicesTableHasInvoiceKindColumn();
 
             if ($hasDocCols) {
                 if ($useDocument) {
-                    $stmt = $pdo->prepare(
-                        'INSERT INTO invoices (
-                            organization_id, client_id, invoice_number, status,
-                            invoice_kind, credited_invoice_id,
-                            issue_date, due_date, currency, notes,
-                            subtotal, tax_total, total,
-                            tax_computation, apply_vat, vat_rate, apply_wht, wht_id,
-                            vat_amount, wht_amount, net_payable
-                        ) VALUES (
-                            :organization_id, :client_id, :invoice_number, \'draft\',
-                            :invoice_kind, :credited_invoice_id,
-                            :issue_date, :due_date, :currency, :notes,
-                            :subtotal, :tax_total, :total,
-                            \'document\', :apply_vat, :vat_rate, :apply_wht, :wht_id,
-                            :vat_amount, :wht_amount, :net_payable
-                        )'
-                    );
-                    $stmt->execute([
-                        'organization_id' => $organizationId,
-                        'client_id' => $clientId,
-                        'invoice_number' => $invoiceNumber,
-                        'invoice_kind' => $kind,
-                        'credited_invoice_id' => $creditedInvoiceId,
-                        'issue_date' => $issueDate,
-                        'due_date' => $dueDate,
-                        'currency' => $currency,
-                        'notes' => $notes,
-                        'subtotal' => $totals['subtotal'],
-                        'tax_total' => $totals['tax_total'],
-                        'total' => $totals['total'],
-                        'apply_vat' => !empty($documentTax['apply_vat']) ? 1 : 0,
-                        'vat_rate' => number_format((float) ($documentTax['vat_rate'] ?? 0), 4, '.', ''),
-                        'apply_wht' => !empty($documentTax['apply_wht']) ? 1 : 0,
-                        'wht_id' => !empty($documentTax['apply_wht']) && !empty($documentTax['wht_id'])
-                            ? (int) $documentTax['wht_id'] : null,
-                        'vat_amount' => $totals['vat_amount'],
-                        'wht_amount' => $totals['wht_amount'],
-                        'net_payable' => $totals['net_payable'],
-                    ]);
-                } else {
+                    if ($hasKind) {
+                        $stmt = $pdo->prepare(
+                            'INSERT INTO invoices (
+                                organization_id, client_id, invoice_number, status,
+                                invoice_kind, credited_invoice_id,
+                                issue_date, due_date, currency, notes,
+                                subtotal, tax_total, total,
+                                tax_computation, apply_vat, vat_rate, apply_wht, wht_id,
+                                vat_amount, wht_amount, net_payable
+                            ) VALUES (
+                                :organization_id, :client_id, :invoice_number, \'draft\',
+                                :invoice_kind, :credited_invoice_id,
+                                :issue_date, :due_date, :currency, :notes,
+                                :subtotal, :tax_total, :total,
+                                \'document\', :apply_vat, :vat_rate, :apply_wht, :wht_id,
+                                :vat_amount, :wht_amount, :net_payable
+                            )'
+                        );
+                        $stmt->execute([
+                            'organization_id' => $organizationId,
+                            'client_id' => $clientId,
+                            'invoice_number' => $invoiceNumber,
+                            'invoice_kind' => $kind,
+                            'credited_invoice_id' => $creditedInvoiceId,
+                            'issue_date' => $issueDate,
+                            'due_date' => $dueDate,
+                            'currency' => $currency,
+                            'notes' => $notes,
+                            'subtotal' => $totals['subtotal'],
+                            'tax_total' => $totals['tax_total'],
+                            'total' => $totals['total'],
+                            'apply_vat' => !empty($documentTax['apply_vat']) ? 1 : 0,
+                            'vat_rate' => number_format((float) ($documentTax['vat_rate'] ?? 0), 4, '.', ''),
+                            'apply_wht' => !empty($documentTax['apply_wht']) ? 1 : 0,
+                            'wht_id' => !empty($documentTax['apply_wht']) && !empty($documentTax['wht_id'])
+                                ? (int) $documentTax['wht_id'] : null,
+                            'vat_amount' => $totals['vat_amount'],
+                            'wht_amount' => $totals['wht_amount'],
+                            'net_payable' => $totals['net_payable'],
+                        ]);
+                    } else {
+                        $stmt = $pdo->prepare(
+                            'INSERT INTO invoices (
+                                organization_id, client_id, invoice_number, status,
+                                issue_date, due_date, currency, notes,
+                                subtotal, tax_total, total,
+                                tax_computation, apply_vat, vat_rate, apply_wht, wht_id,
+                                vat_amount, wht_amount, net_payable
+                            ) VALUES (
+                                :organization_id, :client_id, :invoice_number, \'draft\',
+                                :issue_date, :due_date, :currency, :notes,
+                                :subtotal, :tax_total, :total,
+                                \'document\', :apply_vat, :vat_rate, :apply_wht, :wht_id,
+                                :vat_amount, :wht_amount, :net_payable
+                            )'
+                        );
+                        $stmt->execute([
+                            'organization_id' => $organizationId,
+                            'client_id' => $clientId,
+                            'invoice_number' => $invoiceNumber,
+                            'issue_date' => $issueDate,
+                            'due_date' => $dueDate,
+                            'currency' => $currency,
+                            'notes' => $notes,
+                            'subtotal' => $totals['subtotal'],
+                            'tax_total' => $totals['tax_total'],
+                            'total' => $totals['total'],
+                            'apply_vat' => !empty($documentTax['apply_vat']) ? 1 : 0,
+                            'vat_rate' => number_format((float) ($documentTax['vat_rate'] ?? 0), 4, '.', ''),
+                            'apply_wht' => !empty($documentTax['apply_wht']) ? 1 : 0,
+                            'wht_id' => !empty($documentTax['apply_wht']) && !empty($documentTax['wht_id'])
+                                ? (int) $documentTax['wht_id'] : null,
+                            'vat_amount' => $totals['vat_amount'],
+                            'wht_amount' => $totals['wht_amount'],
+                            'net_payable' => $totals['net_payable'],
+                        ]);
+                    }
+                } elseif ($hasKind) {
                     $stmt = $pdo->prepare(
                         'INSERT INTO invoices (
                             organization_id, client_id, invoice_number, status,
@@ -288,8 +327,37 @@ final class InvoiceRepository
                         'total' => $totals['total'],
                         'net_payable' => $totals['total'],
                     ]);
+                } else {
+                    $stmt = $pdo->prepare(
+                        'INSERT INTO invoices (
+                            organization_id, client_id, invoice_number, status,
+                            issue_date, due_date, currency, notes,
+                            subtotal, tax_total, total,
+                            tax_computation, apply_vat, vat_rate, apply_wht, wht_id,
+                            vat_amount, wht_amount, net_payable
+                        ) VALUES (
+                            :organization_id, :client_id, :invoice_number, \'draft\',
+                            :issue_date, :due_date, :currency, :notes,
+                            :subtotal, :tax_total, :total,
+                            \'line\', 0, 0, 0, NULL,
+                            0, 0, :net_payable
+                        )'
+                    );
+                    $stmt->execute([
+                        'organization_id' => $organizationId,
+                        'client_id' => $clientId,
+                        'invoice_number' => $invoiceNumber,
+                        'issue_date' => $issueDate,
+                        'due_date' => $dueDate,
+                        'currency' => $currency,
+                        'notes' => $notes,
+                        'subtotal' => $totals['subtotal'],
+                        'tax_total' => $totals['tax_total'],
+                        'total' => $totals['total'],
+                        'net_payable' => $totals['total'],
+                    ]);
                 }
-            } else {
+            } elseif ($hasKind) {
                 $stmt = $pdo->prepare(
                     'INSERT INTO invoices (
                         organization_id, client_id, invoice_number, status,
@@ -309,6 +377,30 @@ final class InvoiceRepository
                     'invoice_number' => $invoiceNumber,
                     'invoice_kind' => $kind,
                     'credited_invoice_id' => $creditedInvoiceId,
+                    'issue_date' => $issueDate,
+                    'due_date' => $dueDate,
+                    'currency' => $currency,
+                    'notes' => $notes,
+                    'subtotal' => $totals['subtotal'],
+                    'tax_total' => $totals['tax_total'],
+                    'total' => $totals['total'],
+                ]);
+            } else {
+                $stmt = $pdo->prepare(
+                    'INSERT INTO invoices (
+                        organization_id, client_id, invoice_number, status,
+                        issue_date, due_date, currency, notes,
+                        subtotal, tax_total, total
+                    ) VALUES (
+                        :organization_id, :client_id, :invoice_number, \'draft\',
+                        :issue_date, :due_date, :currency, :notes,
+                        :subtotal, :tax_total, :total
+                    )'
+                );
+                $stmt->execute([
+                    'organization_id' => $organizationId,
+                    'client_id' => $clientId,
+                    'invoice_number' => $invoiceNumber,
                     'issue_date' => $issueDate,
                     'due_date' => $dueDate,
                     'currency' => $currency,

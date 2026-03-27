@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Config;
 use App\Core\Controller;
 use App\Core\Csrf;
 use App\Core\Request;
@@ -109,13 +110,10 @@ final class InvoiceController extends Controller
 
         View::render('invoices/form', [
             'invoice' => null,
-            'lines' => (int) ($orgRow['invoice_tax_enabled'] ?? 1) === 1
-                ? $this->defaultFormLines()
-                : $this->defaultFormLinesNoTax(),
+            'lines' => $this->defaultFormLinesNoTax(),
             'clients' => $clientList,
             'is_edit' => false,
             'is_credit_note' => false,
-            'invoice_tax_enabled' => (int) ($orgRow['invoice_tax_enabled'] ?? 1) === 1,
             'document_tax' => $this->documentTaxFormContext($ctx['organization_id'], null),
             'org_tax_row' => $orgTaxRow,
             'user_name' => (string) Session::get('user_name', ''),
@@ -167,8 +165,16 @@ final class InvoiceController extends Controller
         } catch (\InvalidArgumentException $e) {
             Session::flash('error', $e->getMessage());
             $this->redirect('/invoices/create');
-        } catch (\Throwable) {
-            Session::flash('error', 'Could not create invoice. Please try again.');
+        } catch (\Throwable $e) {
+            $detail = $e->getMessage();
+            error_log('[Billo] Invoice create failed: ' . $detail . "\n" . $e->getTraceAsString());
+            $msg = 'Could not create invoice. Please try again.';
+            if ($this->configDebug()) {
+                $msg .= ' ' . $detail;
+            } elseif ($e instanceof \PDOException) {
+                $msg .= ' Your database may be missing columns (run migrations in order, including credit notes and document tax).';
+            }
+            Session::flash('error', $msg);
             $this->redirect('/invoices/create');
         }
 
@@ -212,7 +218,6 @@ final class InvoiceController extends Controller
             'clients' => $clientList,
             'is_edit' => true,
             'is_credit_note' => $isCreditNote,
-            'invoice_tax_enabled' => (int) ($orgRow['invoice_tax_enabled'] ?? 1) === 1,
             'document_tax' => $this->documentTaxFormContext($ctx['organization_id'], $invoice),
             'org_tax_row' => $orgTaxRow,
             'user_name' => (string) Session::get('user_name', ''),
@@ -278,8 +283,13 @@ final class InvoiceController extends Controller
         } catch (\InvalidArgumentException $e) {
             Session::flash('error', $e->getMessage());
             $this->redirect('/invoices/edit?id=' . $id);
-        } catch (\Throwable) {
-            Session::flash('error', 'Could not update invoice.');
+        } catch (\Throwable $e) {
+            error_log('Invoice update failed: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $msg = 'Could not update invoice.';
+            if ($this->configDebug()) {
+                $msg .= ' ' . $e->getMessage();
+            }
+            Session::flash('error', $msg);
             $this->redirect('/invoices/edit?id=' . $id);
         }
 
@@ -581,13 +591,6 @@ final class InvoiceController extends Controller
     /**
      * @return list<array<string, string>>
      */
-    private function defaultFormLines(): array
-    {
-        return [
-            ['description' => '', 'quantity' => '1', 'unit_amount' => '', 'tax_rate' => '0'],
-        ];
-    }
-
     /** @return list<array<string, string>> */
     private function defaultFormLinesNoTax(): array
     {
@@ -607,14 +610,8 @@ final class InvoiceController extends Controller
         $org = $this->organizations->findById($organizationId) ?? [];
         $taxEnabled = (int) ($org['invoice_tax_enabled'] ?? 1) === 1;
 
-        $forceZeroLineTax = false;
-        if (!$isCreditNote && InvoiceRepository::supportsDocumentTax()) {
-            if ($existingInvoice === null) {
-                $forceZeroLineTax = true;
-            } elseif (($existingInvoice['tax_computation'] ?? 'line') === 'document') {
-                $forceZeroLineTax = true;
-            }
-        }
+        // Line items never carry VAT/% in the UI; document-level tax is used when DB supports it.
+        $forceZeroLineTax = !$isCreditNote && InvoiceRepository::supportsDocumentTax();
 
         $clientRaw = $this->request->input('client_id', '');
         $clientId = null;
@@ -695,7 +692,7 @@ final class InvoiceController extends Controller
             $unitStr = isset($row['unit_amount']) ? trim((string) $row['unit_amount']) : '0';
             $taxStr = isset($row['tax_rate']) ? trim((string) $row['tax_rate']) : '0';
 
-            if ($desc === '' && $qtyStr === '' && $unitStr === '' && ($taxStr === '' || $taxStr === '0')) {
+            if ($desc === '' && $qtyStr === '' && $unitStr === '') {
                 continue;
             }
 
@@ -704,7 +701,7 @@ final class InvoiceController extends Controller
             }
 
             if (!is_numeric($qtyStr) || !is_numeric($unitStr) || !is_numeric($taxStr)) {
-                return 'Quantity, unit price, and tax % must be numbers.';
+                return 'Quantity and unit price must be numbers.';
             }
 
             $qty = (float) $qtyStr;
@@ -829,5 +826,12 @@ final class InvoiceController extends Controller
             'wht_id' => $whtId,
             'wht_rate' => $whtRate,
         ];
+    }
+
+    private function configDebug(): bool
+    {
+        $v = Config::get('app.debug', false);
+
+        return $v === true || $v === 1 || $v === '1';
     }
 }

@@ -1,4 +1,6 @@
 -- Document-level VAT (additive) + WHT (deductive)
+-- Prerequisite: numbered migrations should run in order. Migration 012 adds organizations.invoice_tax_enabled;
+-- the backfill below does not reference it so 014 can run even if 012 is not applied yet (defaults enable_vat=1).
 
 CREATE TABLE IF NOT EXISTS tax_configs (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -35,8 +37,13 @@ CREATE TABLE IF NOT EXISTS organization_tax_settings (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT IGNORE INTO organization_tax_settings (organization_id, enable_vat, vat_rate, enable_wht, default_wht_id)
-SELECT o.id, COALESCE(o.invoice_tax_enabled, 1), 0.0000, 0, NULL
+SELECT o.id, 1, 0.0000, 0, NULL
 FROM organizations o;
+
+-- Optional: after migration 012 is applied, align document VAT default with per-org line-tax toggle:
+-- UPDATE organization_tax_settings ots
+-- INNER JOIN organizations o ON o.id = ots.organization_id
+-- SET ots.enable_vat = o.invoice_tax_enabled;
 
 ALTER TABLE invoices
     ADD COLUMN tax_computation ENUM('line', 'document') NOT NULL DEFAULT 'line',
