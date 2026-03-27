@@ -2,8 +2,12 @@
 declare(strict_types=1);
 /** @var string $content */
 /** @var string $title */
-$pageTitle = $title ?? 'billo';
+$pageTitle = $title ?? billo_brand_name();
 $bodyClass = $bodyClass ?? '';
+$brandTagline = billo_brand_tagline();
+$metaDescription = $brandTagline !== ''
+    ? $brandTagline
+    : 'FIRS-aligned invoicing for Nigerian freelancers and businesses. Simple to use, built for compliance and growth.';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -11,7 +15,7 @@ $bodyClass = $bodyClass ?? '';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= billo_e($pageTitle) ?></title>
-    <meta name="description" content="FIRS-aligned invoicing for Nigerian freelancers and businesses. Simple to use, built for compliance and growth.">
+    <meta name="description" content="<?= billo_e($metaDescription) ?>">
     <meta name="theme-color" content="#16A34A">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,7 +26,7 @@ $bodyClass = $bodyClass ?? '';
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
     <div class="container site-header__inner">
-        <a class="wordmark" href="<?= billo_e(billo_url('/')) ?>">billo</a>
+        <a class="wordmark" href="<?= billo_e(billo_url('/')) ?>"><?= billo_e(billo_brand_name()) ?></a>
         <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="primary-nav" aria-label="Open menu">
             <span class="nav-toggle__bar"></span>
             <span class="nav-toggle__bar"></span>
@@ -64,7 +68,7 @@ $bodyClass = $bodyClass ?? '';
         </div>
     </div>
     <div class="container site-footer__bottom">
-        <p>&copy; <?= (int) date('Y') ?> billo. Built for Nigeria.</p>
+        <p>&copy; <?= (int) date('Y') ?> <?= billo_e(billo_brand_name()) ?>. Built for Nigeria.</p>
     </div>
 </footer>
 <script src="<?= billo_e(billo_asset('js/app.js')) ?>" defer></script>

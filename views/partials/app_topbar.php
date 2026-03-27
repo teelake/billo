@@ -11,7 +11,7 @@ use App\Core\Csrf;
 <header class="app-topbar">
     <div class="container app-topbar__inner">
         <div class="app-topbar__left">
-            <a class="wordmark" href="<?= billo_e(billo_url('/dashboard')) ?>">billo</a>
+            <a class="wordmark" href="<?= billo_e(billo_url('/dashboard')) ?>"><?= billo_e(billo_brand_name()) ?></a>
             <nav class="app-subnav" aria-label="App">
                 <a class="app-subnav__link<?= ($active ?? '') === 'dashboard' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/dashboard')) ?>">Dashboard</a>
                 <a class="app-subnav__link<?= ($active ?? '') === 'clients' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/clients')) ?>">Clients</a>

@@ -25,6 +25,16 @@ final class Config
     }
 
     /**
+     * Deep-merge runtime values (e.g. platform_settings from database).
+     *
+     * @param array<string, mixed> $patch
+     */
+    public static function extend(array $patch): void
+    {
+        self::$data = self::merge(self::$data, $patch);
+    }
+
+    /**
      * @return mixed
      */
     public static function get(string $key, mixed $default = null): mixed

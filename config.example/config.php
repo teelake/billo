@@ -57,4 +57,9 @@ return [
         'email_verification_ttl_hours' => 48,
         'invitation_ttl_days' => 7,
     ],
+    /** Filled from DB platform_settings when present; can set here for local dev. */
+    'brand' => [
+        'tagline' => '',
+        'support_email' => '',
+    ],
 ];

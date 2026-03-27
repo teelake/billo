@@ -12,6 +12,7 @@ use App\Core\Config;
 use App\Core\Request;
 use App\Core\Router;
 use App\Core\Session;
+use App\Services\PlatformSettings;
 
 $root = dirname(__DIR__);
 require $root . '/app/Autoloader.php';
@@ -35,6 +36,7 @@ if (!is_array($config)) {
     throw new RuntimeException('Invalid configuration.');
 }
 Config::load($configDir, $config);
+PlatformSettings::applyFromDatabase();
 
 require $root . '/app/helpers.php';
 

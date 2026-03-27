@@ -2,7 +2,11 @@
 declare(strict_types=1);
 /** @var string $content */
 /** @var string $title */
-$pageTitle = $title ?? 'billo';
+$pageTitle = $title ?? billo_brand_name();
+$authTagline = billo_brand_tagline();
+$authLead = $authTagline !== ''
+    ? $authTagline
+    : 'FIRS-ready invoicing for Nigerian businesses—without the spreadsheet.';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -21,8 +25,8 @@ $pageTitle = $title ?? 'billo';
 <a class="skip-link" href="#auth-panel">Skip to form</a>
 <div class="auth-shell">
     <div class="auth-shell__brand">
-        <a class="wordmark wordmark--light" href="<?= billo_e(billo_url('/')) ?>">billo</a>
-        <p class="auth-shell__lead">FIRS-ready invoicing for Nigerian businesses—without the spreadsheet.</p>
+        <a class="wordmark wordmark--light" href="<?= billo_e(billo_url('/')) ?>"><?= billo_e(billo_brand_name()) ?></a>
+        <p class="auth-shell__lead"><?= billo_e($authLead) ?></p>
         <ul class="auth-shell__bullets">
             <li>Multi-currency, bespoke PDFs</li>
             <li>Built for teams &amp; organizations</li>

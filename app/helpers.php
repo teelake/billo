@@ -25,3 +25,20 @@ function billo_e(?string $value): string
 {
     return htmlspecialchars((string) $value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 }
+
+/** Display name from config or platform_settings (DB). */
+function billo_brand_name(): string
+{
+    return (string) Config::get('app.name', 'billo');
+}
+
+/** Marketing tagline; empty string if unset. */
+function billo_brand_tagline(): string
+{
+    return (string) Config::get('brand.tagline', '');
+}
+
+function billo_support_email(): string
+{
+    return (string) Config::get('brand.support_email', '');
+}

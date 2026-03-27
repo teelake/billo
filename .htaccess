@@ -1,0 +1,15 @@
+# Project root (parent of /public). Helps when DocumentRoot points here instead of /public.
+# Fixes many 403s where the folder had no index or default deny.
+#
+# Prefer pointing your vhost DocumentRoot at the /public folder; then this file is unused.
+
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Allow from all
+</IfModule>
+
+Options -Indexes +FollowSymLinks
+DirectoryIndex index.php
