@@ -62,10 +62,21 @@ ob_start();
             <a class="btn btn--secondary" href="<?= billo_e(billo_url('/dashboard')) ?>">Dashboard</a>
         </div>
 
-        <div class="welcome-card" style="max-width:44rem">
-            <form class="form form--spaced" method="post" action="<?= billo_e(billo_url('/organization')) ?>" enctype="multipart/form-data">
+        <div class="welcome-card org-settings-card">
+            <form class="form form--spaced org-settings-form" method="post" action="<?= billo_e(billo_url('/organization')) ?>" enctype="multipart/form-data">
                 <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
 
+                <div class="org-settings-tabs" data-org-settings-tabs>
+                    <div class="org-settings-tablist" role="tablist" aria-label="Business settings sections">
+                        <button type="button" class="org-settings-tab" role="tab" id="org-tab-business" aria-selected="true" aria-controls="org-panel-business" data-org-tab="business">Business &amp; legal</button>
+                        <button type="button" class="org-settings-tab" role="tab" id="org-tab-branding" aria-selected="false" aria-controls="org-panel-branding" data-org-tab="branding" tabindex="-1">Logo &amp; footer</button>
+                        <button type="button" class="org-settings-tab" role="tab" id="org-tab-bank" aria-selected="false" aria-controls="org-panel-bank" data-org-tab="bank" tabindex="-1">Bank</button>
+                        <button type="button" class="org-settings-tab" role="tab" id="org-tab-invoicing" aria-selected="false" aria-controls="org-panel-invoicing" data-org-tab="invoicing" tabindex="-1">Invoicing &amp; PDF</button>
+                    </div>
+
+                    <div class="org-settings-panels">
+                        <div class="org-settings-panel" role="tabpanel" id="org-panel-business" aria-labelledby="org-tab-business" data-org-panel="business">
+                            <p class="org-settings-panel__lead">Legal name, address, identifiers, and website shown on invoices.</p>
                 <div class="field">
                     <label class="label" for="legal_name">Legal / invoice name</label>
                     <input class="input" id="legal_name" name="legal_name" maxlength="200" value="<?= billo_e($val('legal_name')) ?>" placeholder="Same as display name or registered business name">
@@ -108,6 +119,10 @@ ob_start();
                     <input class="input" id="company_website" name="company_website" type="text" maxlength="255" value="<?= billo_e($val('company_website')) ?>" placeholder="https://example.com or example.ng" inputmode="url" autocomplete="url">
                     <p class="hint">Optional public site; <strong>one workspace per domain</strong> (<code>www.</code> ignored). Shown on invoice PDF/print when set.</p>
                 </div>
+                        </div>
+
+                        <div class="org-settings-panel" role="tabpanel" id="org-panel-branding" aria-labelledby="org-tab-branding" data-org-panel="branding" hidden>
+                            <p class="org-settings-panel__lead">Logo and footer text for PDFs, print, and emails.</p>
                 <div class="field org-logo-field">
                     <span class="label">Invoice logo</span>
                     <div class="org-logo-preview-wrap" id="org-logo-preview-wrap"<?= $hasStoredLogo ? '' : ' hidden' ?>>
@@ -129,8 +144,10 @@ ob_start();
                     <label class="label" for="invoice_footer">Invoice footer</label>
                     <textarea class="input input--textarea" id="invoice_footer" name="invoice_footer" rows="4" placeholder="Bank details, payment terms, registration footnotes…"><?= billo_e($val('invoice_footer')) ?></textarea>
                 </div>
+                        </div>
 
-                <div class="org-bank-block">
+                        <div class="org-settings-panel" role="tabpanel" id="org-panel-bank" aria-labelledby="org-tab-bank" data-org-panel="bank" hidden>
+                <div class="org-bank-block" style="margin-top:0;padding-top:0;border-top:none">
                     <h2 class="org-invoicing-block__title">Bank details</h2>
                     <p class="hint org-invoicing-block__lead">Shown on invoice PDF, print, and the invoice page. Fields are optional if you prefer to describe payment only in the footer.</p>
 
@@ -152,8 +169,10 @@ ob_start();
                         </div>
                     </div>
                 </div>
+                        </div>
 
-                <div class="org-invoicing-block">
+                        <div class="org-settings-panel" role="tabpanel" id="org-panel-invoicing" aria-labelledby="org-tab-invoicing" data-org-panel="invoicing" hidden>
+                <div class="org-invoicing-block" style="margin-top:0;padding-top:0;border-top:none">
                     <h2 class="org-invoicing-block__title">Invoicing &amp; PDF</h2>
                     <p class="hint org-invoicing-block__lead">These settings apply to new and existing invoices: print view, PDF download, and the line-item editor.</p>
 
@@ -192,9 +211,13 @@ ob_start();
                         </div>
                     </div>
                 </div>
+                        </div>
+                    </div>
+                </div>
 
-                <div class="form-actions">
-                    <button type="submit" class="btn btn--primary">Save</button>
+                <div class="org-settings-form-actions">
+                    <p class="org-settings-form-actions__hint">Saves all tabs in one step.</p>
+                    <button type="submit" class="btn btn--primary">Save all changes</button>
                 </div>
             </form>
             <script type="application/json" id="billo-ng-banks-data"><?= $banksJson ?></script>
@@ -252,6 +275,42 @@ $bodyClass = 'app-body';
             }
         });
     }
+})();
+(function () {
+    var root = document.querySelector('[data-org-settings-tabs]');
+    if (!root) return;
+    var tabs = root.querySelectorAll('[data-org-tab]');
+    var panels = root.querySelectorAll('[data-org-panel]');
+    var valid = { business: 1, branding: 1, bank: 1, invoicing: 1 };
+    function show(id) {
+        if (!valid[id]) id = 'business';
+        tabs.forEach(function (btn) {
+            var on = (btn.getAttribute('data-org-tab') || '') === id;
+            btn.setAttribute('aria-selected', on ? 'true' : 'false');
+            btn.tabIndex = on ? 0 : -1;
+        });
+        panels.forEach(function (p) {
+            var on = (p.getAttribute('data-org-panel') || '') === id;
+            if (on) p.removeAttribute('hidden');
+            else p.setAttribute('hidden', '');
+        });
+        try {
+            var path = window.location.pathname || '';
+            var search = window.location.search || '';
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState(null, '', path + search + '#' + id);
+            } else {
+                window.location.hash = id;
+            }
+        } catch (e) { /* ignore */ }
+    }
+    tabs.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            show(btn.getAttribute('data-org-tab') || 'business');
+        });
+    });
+    var hash = (window.location.hash || '').replace(/^#/, '').toLowerCase();
+    if (valid[hash]) show(hash);
 })();
 </script>
 <script src="<?= billo_e(billo_asset('js/app.js')) ?>" defer></script>
