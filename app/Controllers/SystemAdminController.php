@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Controller;
+use App\Core\Database;
 use App\Core\Session;
 use App\Core\View;
-use App\Core\Database;
 use App\Repositories\OrganizationRepository;
 use App\Repositories\UserRepository;
 use PDOException;
