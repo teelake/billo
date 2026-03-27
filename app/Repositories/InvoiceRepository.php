@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories;
 
+use App\Core\Config;
 use App\Core\Database;
 use PDO;
 use PDOException;
@@ -11,17 +12,52 @@ use RuntimeException;
 
 final class InvoiceRepository
 {
+    private static ?bool $invoicesHasInvoiceKind = null;
+
+    private static function invoicesTableHasInvoiceKindColumn(): bool
+    {
+        if (self::$invoicesHasInvoiceKind !== null) {
+            return self::$invoicesHasInvoiceKind;
+        }
+        $dbName = Config::get('db.database');
+        if (!is_string($dbName) || $dbName === '') {
+            self::$invoicesHasInvoiceKind = false;
+
+            return false;
+        }
+        try {
+            $stmt = Database::pdo()->prepare(
+                'SELECT 1 FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = :schema AND TABLE_NAME = :tbl AND COLUMN_NAME = :col
+                 LIMIT 1'
+            );
+            $stmt->execute([
+                'schema' => $dbName,
+                'tbl' => 'invoices',
+                'col' => 'invoice_kind',
+            ]);
+            self::$invoicesHasInvoiceKind = (bool) $stmt->fetchColumn();
+        } catch (\Throwable) {
+            self::$invoicesHasInvoiceKind = false;
+        }
+
+        return self::$invoicesHasInvoiceKind;
+    }
+
     /** @return list<array<string, mixed>> */
     public function listForOrganization(int $organizationId): array
     {
+        $kindSelect = self::invoicesTableHasInvoiceKindColumn()
+            ? 'i.invoice_kind'
+            : "'invoice' AS invoice_kind";
         $stmt = Database::pdo()->prepare(
-            'SELECT i.id, i.invoice_number, i.status, i.invoice_kind, i.issue_date, i.due_date, i.currency,
+            "SELECT i.id, i.invoice_number, i.status, {$kindSelect}, i.issue_date, i.due_date, i.currency,
                     i.subtotal, i.tax_total, i.total, i.client_id, i.sent_at, i.paid_at, i.created_at,
                     c.name AS client_name, c.company_name AS client_company
              FROM invoices i
              LEFT JOIN clients c ON c.id = i.client_id
              WHERE i.organization_id = :organization_id
-             ORDER BY i.created_at DESC, i.id DESC'
+             ORDER BY i.created_at DESC, i.id DESC"
         );
         $stmt->execute(['organization_id' => $organizationId]);
         /** @var list<array<string, mixed>> */

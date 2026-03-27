@@ -30,6 +30,7 @@ final class AuthService
         private EmailVerificationRepository $emailVerification = new EmailVerificationRepository(),
         private InvitationRepository $invitations = new InvitationRepository(),
         private EmailNotifications $emails = new EmailNotifications(),
+        private PlatformAdminGrantRepository $platformAdminGrants = new PlatformAdminGrantRepository(),
     ) {
     }
 
