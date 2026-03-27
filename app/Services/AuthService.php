@@ -39,7 +39,14 @@ final class AuthService
     public function attemptLogin(string $email, string $password): bool
     {
         $user = $this->users->findByEmail($email);
-        if ($user === null || !password_verify($password, $user['password_hash'])) {
+        if ($user === null) {
+            return false;
+        }
+        $hash = $user['password_hash'] ?? null;
+        if ($hash === null || (is_string($hash) && trim($hash) === '')) {
+            return false;
+        }
+        if (!password_verify($password, (string) $hash)) {
             return false;
         }
 
@@ -55,6 +62,234 @@ final class AuthService
         $this->establishSession($userId, $user, $membership);
 
         return true;
+    }
+
+    /**
+     * Finish Google OAuth after userinfo is fetched. Returns next step or an error message.
+     *
+     * @param array{sub:string,email:string,name:string} $profile
+     *
+     * @return array{next:'dashboard'}|array{next:'signup_google'}|string
+     */
+    public function processGoogleOAuthProfile(array $profile, string $intent): array|string
+    {
+        $sub = trim((string) $profile['sub']);
+        $email = strtolower(trim((string) $profile['email']));
+        $name = trim((string) $profile['name']);
+        if ($sub === '' || $email === '' || $name === '') {
+            return 'Google sign-in returned an incomplete profile. Try again.';
+        }
+
+        $bySub = $this->users->findByGoogleSub($sub);
+        if ($bySub !== null) {
+            $err = $this->establishOAuthSessionForUser($bySub);
+            if ($err !== null) {
+                return $err;
+            }
+
+            return ['next' => 'dashboard'];
+        }
+
+        $byEmail = $this->users->findByEmail($email);
+        if ($byEmail !== null) {
+            $existingSub = isset($byEmail['google_sub']) ? trim((string) $byEmail['google_sub']) : '';
+            if ($existingSub !== '' && $existingSub !== $sub) {
+                return 'This email is already linked to a different Google account.';
+            }
+            if ($existingSub === '') {
+                $this->users->linkGoogleSub((int) $byEmail['id'], $sub);
+                $fresh = $this->users->findById((int) $byEmail['id']);
+                if ($fresh === null) {
+                    return 'Could not link your Google account. Try again.';
+                }
+                $byEmail = $fresh;
+            }
+            $err = $this->establishOAuthSessionForUser($byEmail);
+            if ($err !== null) {
+                return $err;
+            }
+
+            return ['next' => 'dashboard'];
+        }
+
+        if ($this->hasPendingInvitationInSession()) {
+            $inviteId = Session::get('pending_invitation_id');
+            $invite = is_numeric($inviteId) ? $this->invitations->findPendingById((int) $inviteId) : null;
+            if ($invite === null) {
+                Session::remove('pending_invitation_id');
+
+                return 'Your invitation session expired. Open your invitation link again.';
+            }
+            if ($email !== strtolower(trim((string) $invite['email']))) {
+                return 'This invitation was sent to ' . (string) $invite['email'] . '. Sign in with the Google account that uses that email.';
+            }
+
+            return $this->registerInvitedWithGoogle($profile);
+        }
+
+        if ($intent === 'login') {
+            return 'No account exists for that Google email. Create an account first.';
+        }
+
+        Session::set('oauth_google_profile', [
+            'sub' => $sub,
+            'email' => $email,
+            'name' => $name,
+        ]);
+
+        return ['next' => 'signup_google'];
+    }
+
+    /**
+     * After OAuth, complete new workspace signup (organization name only).
+     *
+     * @return true|string
+     */
+    public function completeGoogleWorkspaceSignup(string $organizationName): true|string
+    {
+        $raw = Session::get('oauth_google_profile');
+        if (!is_array($raw)) {
+            return 'Your Google sign-up session expired. Start again from the sign-up page.';
+        }
+        $sub = isset($raw['sub']) ? trim((string) $raw['sub']) : '';
+        $email = isset($raw['email']) ? strtolower(trim((string) $raw['email'])) : '';
+        $name = isset($raw['name']) ? trim((string) $raw['name']) : '';
+        if ($sub === '' || $email === '' || $name === '') {
+            Session::remove('oauth_google_profile');
+
+            return 'Your Google sign-up session expired. Start again from the sign-up page.';
+        }
+
+        $organizationName = trim($organizationName);
+        if ($organizationName === '' || self::len($organizationName) > 200) {
+            return 'Please enter your organization name.';
+        }
+
+        if ($this->users->findByGoogleSub($sub) !== null || $this->users->findByEmail($email) !== null) {
+            Session::remove('oauth_google_profile');
+
+            return 'An account already exists for this email. Log in instead.';
+        }
+
+        $slug = $this->uniqueSlugFromName($organizationName);
+        $pdo = Database::pdo();
+        try {
+            $pdo->beginTransaction();
+            $userId = $this->users->createOAuthGoogle($email, $name, $sub);
+            $orgId = $this->organizations->create($organizationName, $slug);
+            $this->members->attach($orgId, $userId, 'owner');
+            $this->users->setActiveOrganization($userId, $orgId);
+            (new OrganizationTaxRepository())->ensureDefaults($orgId);
+            (new OrganizationSubscriptionRepository())->ensureFreePlan($orgId);
+            $pdo->commit();
+        } catch (PDOException $e) {
+            $pdo->rollBack();
+            error_log('Billo Google workspace signup failed: ' . $e->getMessage());
+
+            return 'Could not create your workspace. Please try again.';
+        }
+
+        Session::remove('oauth_google_profile');
+
+        $userRow = $this->users->findById($userId);
+        if ($userRow === null) {
+            return 'Could not create your workspace. Please try again.';
+        }
+
+        $membership = ['organization_id' => $orgId, 'role' => 'owner'];
+        $this->establishSession($userId, $userRow, $membership);
+
+        return true;
+    }
+
+    /**
+     * @param array{sub:string,email:string,name:string} $profile
+     *
+     * @return array{next:'dashboard'}|string
+     */
+    private function registerInvitedWithGoogle(array $profile): array|string
+    {
+        $email = strtolower(trim((string) $profile['email']));
+        $name = trim((string) $profile['name']);
+        $sub = trim((string) $profile['sub']);
+
+        $inviteId = Session::get('pending_invitation_id');
+        if (!is_numeric($inviteId)) {
+            return 'Invitation session expired. Open your invitation link again.';
+        }
+
+        $invite = $this->invitations->findPendingById((int) $inviteId);
+        if ($invite === null) {
+            Session::remove('pending_invitation_id');
+
+            return 'This invitation is no longer valid.';
+        }
+
+        if ($email !== strtolower(trim((string) $invite['email']))) {
+            return 'Use the same email address this invitation was sent to.';
+        }
+
+        if ($name === '' || self::len($name) > 120) {
+            return 'Please use a Google profile with a display name, or contact support.';
+        }
+
+        if ($this->users->findByEmail($email) !== null) {
+            return 'An account already exists for this email. Log in to accept the invite.';
+        }
+
+        $orgId = (int) $invite['organization_id'];
+        $role = (string) $invite['role'];
+        $invitationRowId = (int) $invite['id'];
+
+        $pdo = Database::pdo();
+        try {
+            $pdo->beginTransaction();
+            $userId = $this->users->createOAuthGoogle($email, $name, $sub);
+            $this->members->attachIfNotMember($orgId, $userId, $role);
+            $this->users->setActiveOrganization($userId, $orgId);
+            $this->invitations->markAccepted($invitationRowId);
+            $pdo->commit();
+        } catch (PDOException $e) {
+            $pdo->rollBack();
+            error_log('Billo Google invite register failed: ' . $e->getMessage());
+
+            return 'Could not create account. Please try again.';
+        }
+
+        Session::remove('pending_invitation_id');
+
+        $userRow = $this->users->findById($userId);
+        if ($userRow === null) {
+            return 'Could not create account. Please try again.';
+        }
+
+        $membership = ['organization_id' => $orgId, 'role' => $role];
+        $this->establishSession($userId, $userRow, $membership);
+
+        return ['next' => 'dashboard'];
+    }
+
+    /**
+     * OAuth-only users can set an initial password without the current one.
+     *
+     * @return string|null Error message or null on success.
+     */
+    public function setInitialPasswordForOAuthUser(int $userId, string $newPassword): ?string
+    {
+        if ($this->users->hasPasswordHash($userId)) {
+            return 'You already have a password. Use the change password form with your current password.';
+        }
+        $err = PasswordRules::validate($newPassword);
+        if ($err !== null) {
+            return $err;
+        }
+        $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+        if ($hash === false) {
+            return 'Could not set password. Please try again.';
+        }
+        $this->users->updatePassword($userId, $hash);
+
+        return null;
     }
 
     public function logout(): void
@@ -420,8 +655,12 @@ final class AuthService
         if ($user === null) {
             return false;
         }
+        $hash = $user['password_hash'] ?? null;
+        if ($hash === null || (is_string($hash) && trim($hash) === '')) {
+            return false;
+        }
 
-        return password_verify($plainPassword, (string) $user['password_hash']);
+        return password_verify($plainPassword, (string) $hash);
     }
 
     /** @return string|null Error message or null on success. */
@@ -456,6 +695,27 @@ final class AuthService
         }
 
         return strlen($value);
+    }
+
+    /**
+     * @param array<string, mixed> $userRow
+     *
+     * @return string|null Error message, or null when session is established.
+     */
+    private function establishOAuthSessionForUser(array $userRow): ?string
+    {
+        $userId = (int) $userRow['id'];
+        $pref = isset($userRow['active_organization_id']) && $userRow['active_organization_id'] !== null
+            ? (int) $userRow['active_organization_id'] : null;
+        $membership = $this->members->membershipForUserPreferringOrg($userId, $pref);
+        if ($membership === null) {
+            return 'Your account is not linked to an organization yet. Use an invitation link or contact support.';
+        }
+
+        $this->users->setActiveOrganization($userId, $membership['organization_id']);
+        $this->establishSession($userId, $userRow, $membership);
+
+        return null;
     }
 
     private function uniqueSlugFromName(string $name): string

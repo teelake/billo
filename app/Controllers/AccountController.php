@@ -104,6 +104,7 @@ final class AccountController extends Controller
             'role' => $ctx['role'],
             'show_team_nav' => in_array($ctx['role'], ['owner', 'admin'], true),
             'active' => '',
+            'has_password' => $this->users->hasPasswordHash($ctx['user_id']),
             'error' => Session::flash('error') ?? '',
             'success' => Session::flash('success') ?? '',
         ]);
@@ -117,26 +118,34 @@ final class AccountController extends Controller
             $this->redirect('/account/password');
         }
 
-        $current = (string) $this->request->input('current_password', '');
         $new = (string) $this->request->input('password', '');
         $confirm = (string) $this->request->input('password_confirm', '');
+        $hasPassword = $this->users->hasPasswordHash($ctx['user_id']);
 
-        if (!$this->auth->verifyPasswordForUser($ctx['user_id'], $current)) {
-            Session::flash('error', 'Current password is incorrect.');
-            $this->redirect('/account/password');
+        if ($hasPassword) {
+            $current = (string) $this->request->input('current_password', '');
+            if (!$this->auth->verifyPasswordForUser($ctx['user_id'], $current)) {
+                Session::flash('error', 'Current password is incorrect.');
+                $this->redirect('/account/password');
+            }
         }
+
         if ($new !== $confirm) {
             Session::flash('error', 'New passwords do not match.');
             $this->redirect('/account/password');
         }
 
-        $err = $this->auth->changePassword($ctx['user_id'], $new);
+        $err = $hasPassword
+            ? $this->auth->changePassword($ctx['user_id'], $new)
+            : $this->auth->setInitialPasswordForOAuthUser($ctx['user_id'], $new);
         if ($err !== null) {
             Session::flash('error', $err);
             $this->redirect('/account/password');
         }
 
-        Session::flash('success', 'Password updated. Use your new password next time you log in on other devices.');
+        Session::flash('success', $hasPassword
+            ? 'Password updated. Use your new password next time you log in on other devices.'
+            : 'Password saved. You can now sign in with email and password as well as Google.');
         $this->redirect('/account/password');
     }
 

@@ -63,6 +63,18 @@ return [
         'invitation_ttl_days' => 7,
     ],
     /**
+     * Google OAuth 2.0 (Sign in with Google). Create OAuth client (Web) in Google Cloud Console:
+     * Authorized redirect URI = {app.url}{app.base_path}/auth/google/callback
+     * Enable Google+ People API / use scope openid email profile.
+     */
+    'oauth' => [
+        'google' => [
+            'enabled' => false,
+            'client_id' => '',
+            'client_secret' => '',
+        ],
+    ],
+    /**
      * Filled from DB `platform_settings` when present (merged at boot).
      * System operators can edit many keys in-app at /system/configuration;
      * values there override file config for this PHP process. Prefer

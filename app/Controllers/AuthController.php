@@ -7,9 +7,11 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Core\Csrf;
 use App\Core\Request;
+use App\Core\Response;
 use App\Core\Session;
 use App\Core\View;
 use App\Services\AuthService;
+use App\Services\GoogleOAuthService;
 use App\Support\PasswordRules;
 use PDOException;
 
@@ -173,6 +175,146 @@ final class AuthController extends Controller
             Session::flash('error', 'Cannot connect to the database. Check MySQL and config/config.php.');
             $preserveOld();
             $this->redirect('/signup');
+        }
+
+        $this->redirect('/dashboard');
+    }
+
+    public function googleStart(): void
+    {
+        if ($this->authContext() !== null) {
+            $this->redirect('/dashboard');
+        }
+        $oauth = new GoogleOAuthService();
+        if (!$oauth->isEnabled()) {
+            Session::flash('error', 'Google sign-in is not available.');
+            $this->redirect('/login');
+        }
+        $intentRaw = (string) $this->request->input('intent', 'login');
+        $intent = $intentRaw === 'signup' ? 'signup' : 'login';
+        $state = bin2hex(random_bytes(16));
+        Session::set('google_oauth_state', $state);
+        Session::set('google_oauth_intent', $intent);
+        Response::redirect($oauth->buildAuthorizeUrl($state));
+    }
+
+    public function googleCallback(): void
+    {
+        if ($this->authContext() !== null) {
+            $this->redirect('/dashboard');
+        }
+        $oauth = new GoogleOAuthService();
+        if (!$oauth->isEnabled()) {
+            Session::flash('error', 'Google sign-in is not configured.');
+            $this->redirect('/login');
+        }
+
+        $errParam = (string) $this->request->input('error', '');
+        if ($errParam !== '') {
+            Session::flash('error', 'Google sign-in was cancelled or failed.');
+            $this->redirect('/login');
+        }
+
+        $state = (string) $this->request->input('state', '');
+        $expected = Session::get('google_oauth_state');
+        Session::remove('google_oauth_state');
+        if (!is_string($expected) || $expected === '' || $state === '' || !hash_equals($expected, $state)) {
+            Session::flash('error', 'Invalid sign-in session. Please try again.');
+            $this->redirect('/login');
+        }
+
+        $intent = Session::get('google_oauth_intent', 'login');
+        Session::remove('google_oauth_intent');
+        $intent = is_string($intent) && $intent === 'signup' ? 'signup' : 'login';
+
+        $code = (string) $this->request->input('code', '');
+        $profile = $oauth->exchangeCodeForProfile($code);
+        if (is_string($profile)) {
+            Session::flash('error', $profile);
+            $this->redirect($intent === 'signup' ? '/signup' : '/login');
+        }
+
+        $hadInvitePending = $this->auth->hasPendingInvitationInSession();
+
+        try {
+            $result = $this->auth->processGoogleOAuthProfile($profile, $intent);
+        } catch (PDOException $e) {
+            error_log('Google OAuth callback: ' . $e->getMessage());
+            Session::flash('error', 'Could not complete sign-in. Check the database connection and try again.');
+            $this->redirect('/login');
+        }
+
+        if (is_string($result)) {
+            Session::flash('error', $result);
+            $this->redirect($intent === 'signup' ? '/signup' : '/login');
+        }
+
+        if ($result['next'] === 'signup_google') {
+            $this->redirect('/signup/google');
+        }
+
+        $userId = (int) Session::get('user_id');
+        $userEmail = (string) Session::get('user_email');
+        $inviteError = $this->auth->completePendingInvitationForUser($userId, $userEmail);
+        if ($inviteError !== null) {
+            Session::flash('error', $inviteError);
+        } elseif ($hadInvitePending && !$this->auth->hasPendingInvitationInSession()) {
+            Session::flash('success', 'You’ve joined the organization.');
+        }
+
+        $this->redirect('/dashboard');
+    }
+
+    public function showSignupGoogle(): void
+    {
+        if ($this->authContext() !== null) {
+            $this->redirect('/dashboard');
+        }
+        $raw = Session::get('oauth_google_profile');
+        if (!is_array($raw)) {
+            Session::flash('error', 'Start by choosing Continue with Google on the sign-up page.');
+            $this->redirect('/signup');
+        }
+        $email = isset($raw['email']) ? (string) $raw['email'] : '';
+        $name = isset($raw['name']) ? (string) $raw['name'] : '';
+        $old = Session::get('old_signup_google');
+        Session::remove('old_signup_google');
+        $orgDefault = is_array($old) && isset($old['organization_name']) && is_string($old['organization_name'])
+            ? $old['organization_name'] : '';
+
+        View::render('auth/signup-google', [
+            'error' => Session::flash('error') ?? '',
+            'email' => $email,
+            'name' => $name,
+            'organization_name' => $orgDefault,
+        ]);
+    }
+
+    public function signupGoogleComplete(): void
+    {
+        if ($this->authContext() !== null) {
+            $this->redirect('/dashboard');
+        }
+        if (!$this->validateCsrf()) {
+            Session::flash('error', 'Invalid session. Please try again.');
+            $this->redirect('/signup/google');
+        }
+
+        $organizationName = (string) $this->request->input('organization_name', '');
+
+        try {
+            $result = $this->auth->completeGoogleWorkspaceSignup($organizationName);
+        } catch (PDOException $e) {
+            error_log('signupGoogleComplete: ' . $e->getMessage());
+            Session::flash('error', 'Cannot connect to the database. Check MySQL and config/config.php.');
+            Session::set('old_signup_google', ['organization_name' => $organizationName]);
+            $this->redirect('/signup/google');
+        }
+
+        if ($result !== true) {
+            Session::flash('error', $result);
+            Session::set('old_signup_google', ['organization_name' => $organizationName]);
+            $this->redirect('/signup/google');
         }
 
         $this->redirect('/dashboard');

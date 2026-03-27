@@ -45,7 +45,8 @@ CREATE TABLE IF NOT EXISTS organizations (
 CREATE TABLE IF NOT EXISTS users (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NULL DEFAULT NULL,
+    google_sub VARCHAR(255) NULL DEFAULT NULL,
     name VARCHAR(120) NOT NULL,
     email_verified_at TIMESTAMP NULL DEFAULT NULL,
     is_system_admin TINYINT(1) NOT NULL DEFAULT 0,
@@ -53,6 +54,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY users_email_unique (email),
+    UNIQUE KEY users_google_sub_unique (google_sub),
     KEY users_active_org (active_organization_id),
     CONSTRAINT fk_users_active_org FOREIGN KEY (active_organization_id)
         REFERENCES organizations (id) ON DELETE SET NULL

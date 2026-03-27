@@ -25,6 +25,10 @@ ob_start();
     <?php if ($error !== ''): ?>
         <div class="alert alert--error" role="alert"><?= billo_e($error) ?></div>
     <?php endif; ?>
+    <?php if (billo_google_oauth_enabled()): ?>
+        <a class="btn btn--google btn--block" href="<?= billo_e(billo_url('/auth/google/start?intent=signup')) ?>">Continue with Google</a>
+        <div class="auth-divider" role="separator"><span>or</span></div>
+    <?php endif; ?>
     <form class="form" method="post" action="<?= billo_e(billo_url('/signup')) ?>" novalidate data-signup-form>
         <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
         <?php if ($isInvite): ?>

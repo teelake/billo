@@ -13,7 +13,8 @@ use App\Core\Csrf;
 
 $error = $error ?? '';
 $success = $success ?? '';
-$title = 'Change password — billo';
+$has_password = $has_password ?? true;
+$title = $has_password ? 'Change password — billo' : 'Set password — billo';
 ob_start();
 ?>
 <section class="app-dashboard">
@@ -31,8 +32,10 @@ ob_start();
 
         <div class="page-head">
             <div>
-                <h1 class="page-head__title">Change password</h1>
-                <p class="page-head__lead">Use a strong password you don’t reuse on other sites.</p>
+                <h1 class="page-head__title"><?= $has_password ? 'Change password' : 'Set password' ?></h1>
+                <p class="page-head__lead"><?= $has_password
+                    ? 'Use a strong password you don’t reuse on other sites.'
+                    : 'Add a password so you can sign in with email as well as Google.' ?></p>
             </div>
             <div class="page-head__actions" style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center">
                 <a class="btn btn--secondary" href="<?= billo_e(billo_url('/account/profile')) ?>">Profile</a>
@@ -43,10 +46,12 @@ ob_start();
         <div class="welcome-card" style="max-width:44rem">
             <form class="form form--spaced" method="post" action="<?= billo_e(billo_url('/account/password')) ?>" data-password-reset-form>
                 <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
-                <div class="field">
-                    <label class="label" for="current_password">Current password</label>
-                    <input class="input" id="current_password" name="current_password" type="password" autocomplete="current-password" required minlength="1" maxlength="128">
-                </div>
+                <?php if ($has_password): ?>
+                    <div class="field">
+                        <label class="label" for="current_password">Current password</label>
+                        <input class="input" id="current_password" name="current_password" type="password" autocomplete="current-password" required minlength="1" maxlength="128">
+                    </div>
+                <?php endif; ?>
                 <div class="field">
                     <label class="label" for="password">New password</label>
                     <input class="input" id="password" name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128" aria-describedby="pw-hint password-strength">

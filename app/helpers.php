@@ -17,6 +17,11 @@ function billo_url(string $path = '/'): string
     return $base . $path;
 }
 
+function billo_google_oauth_enabled(): bool
+{
+    return (new \App\Services\GoogleOAuthService())->isEnabled();
+}
+
 /**
  * Static URL for files under public/assets. Handles both hosting layouts:
  * - DocumentRoot = .../public  → /{base}/assets/...
