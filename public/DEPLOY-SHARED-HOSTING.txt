@@ -1,32 +1,35 @@
-Billo on shared hosting (e.g. Hostinger) — https://www.webspace.ng/billo/
+Billo in a subfolder: https://www.webspace.ng/billo/login
 
-WHY YOU SEE THE HOST’S “SKATEBOARD” 404
-  The URL /billo/ is not pointing at Billo’s files. The server looks for a file that does not exist.
+HOME WORKS BUT /billo/login → HOSTINGER 404
+  Almost always one of:
+  1) File public_html/billo/.htaccess is missing (FTP often hides “dotfiles” — enable “show hidden”).
+  2) Old .htaccess on server (must use RewriteRule .* index.php, not RewriteRule ^ index.php).
+  3) Folder name in URL ≠ folder on disk (Linux: /billo ≠ /Bilo). config app.base_path and RewriteBase must match the real URL segment.
+  4) Files are in public_html/billo/public/ — then either move contents up into billo/ OR use URL .../billo/public/login and set base_path /billo/public (not recommended).
 
-OPTION A — BEST: change “document root” for the site so it points at the project’s /public folder
-  Then your URL might be https://www.webspace.ng/ (no /billo) and config app.base_path should be "".
-  Recopy public/.htaccess with RewriteBase /
+WHERE FILES GO
+  public_html/billo/
+    index.php
+    .htaccess          ← required; same folder as index.php
+    billo-root.php     ← only if you use split deploy (see billo-root.php.example)
+    assets/
+    routing-check.php
 
-OPTION B — SUBFOLDER /billo/ (your case: www.webspace.ng/billo)
-  1) ABOVE public_html (not web-accessible), create a folder, e.g. billo_private, containing:
-       app/  config/  vendor/  storage/  (and database, composer.json if you use CLI there)
-  2) Inside public_html create folder billo/ and upload EVERYTHING from this repo’s public/:
-       index.php  .htaccess  assets/  router.php  routing-check.php  …
-  3) Copy public/billo-root.php.example to public_html/billo/billo-root.php
-     Edit it to return the ABSOLUTE server path to billo_private, e.g.:
-       return '/home/USERNAME/billo_private';
-     (In Hostinger File Manager: open billo_private → note full path from sidebar or parent folders)
-  4) On the server, in billo_private, ensure config/config.php exists (upload from your PC).
-  5) config app.url = 'https://www.webspace.ng'
-     config app.base_path = '/billo'
-  6) Visit https://www.webspace.ng/billo/routing-check.php — you should see plain text, not the host 404.
+  config app.base_path: '/billo'  (same spelling/case as in the URL)
+
+HTACCESS FIX ON SERVER
+  1) Re-upload public/.htaccess from this repo into public_html/billo/
+  2) In hPanel File Manager: enable “Show Hidden Files” and confirm .htaccess is there.
+  3) If login still 404: edit .htaccess — uncomment ONE line:
+       RewriteBase /billo/
+     Use the exact path segment you see in the browser (e.g. /Bilo/ if folder is capital B).
+
+FALLBACKRESOURCE
+  This stack also sets FallbackResource index.php so many Hostinger/LiteSpeed setups route /login even when RewriteBase was wrong.
+
+VERIFY
+  https://www.webspace.ng/billo/routing-check.php  → plain text
+  https://www.webspace.ng/billo/login             → Billo login form
 
 WWW
-  Use https://www.webspace.ng in app.url so links and redirects match what you want.
-  Optional: in public/.htaccess uncomment the RewriteCond/RewriteRule block to force www.
-
-REWRITE
-  public/.htaccess must sit in public_html/billo/. RewriteBase /billo
-
-SECURITY
-  Never put app/, config/, vendor/ inside public_html unless you know the risk.
+  Set config app.url to https://www.webspace.ng (with www) if that is what you use.

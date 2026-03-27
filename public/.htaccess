@@ -2,26 +2,32 @@
     Require all granted
 </IfModule>
 
-# Security: do not list directories
-Options -Indexes
+# Stops /login being treated as "login.something" (MultiViews) and 404ing before rewrite.
+# +FollowSymLinks: required for mod_rewrite on many hosts (Hostinger / LiteSpeed).
+Options -Indexes +FollowSymLinks -MultiViews
 DirectoryIndex index.php
+
+# If mod_rewrite is flaky, this still sends unknown URLs to index.php (Apache 2.4+ / LiteSpeed).
+<IfModule mod_dir.c>
+    FallbackResource index.php
+</IfModule>
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Optional: canonical www (matches app.url). Uncomment if you use www.webspace.ng
+    # If /billo/login still shows Hostinger 404, try BOTH:
+    # (1) Uncomment exactly ONE RewriteBase line — path must match the folder name in the URL (case-sensitive on Linux: /billo not /Bilo).
+    # (2) Or leave both commented; Apache often infers the correct base from this file’s folder.
+    # RewriteBase /billo/
+    # RewriteBase /billo
+
+    # Optional: apex → www (edit domain if needed)
     # RewriteCond %{HTTP_HOST} ^webspace\.ng$ [NC]
     # RewriteRule ^ https://www.webspace.ng%{REQUEST_URI} [L,R=301]
 
-    # MUST match the URL path to this folder (no trailing slash). Examples:
-    #   Site is https://example.com/billo/  →  RewriteBase /billo
-    #   Site is https://example.com/       →  RewriteBase /
-    # If you get host 404s, try commenting RewriteBase entirely (some hosts set it automatically).
-    RewriteBase /billo
+    RewriteRule ^index\.php$ - [L]
 
-    RewriteCond %{REQUEST_FILENAME} -f [OR]
-    RewriteCond %{REQUEST_FILENAME} -d
-    RewriteRule ^ - [L]
-
-    RewriteRule ^ index.php [L]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule .* index.php [QSA,L]
 </IfModule>
