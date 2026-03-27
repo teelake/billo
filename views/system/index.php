@@ -38,7 +38,7 @@ ob_start();
         <div class="welcome-card" style="margin-bottom:1.25rem">
             <h2 class="invoice-detail-card__h">What you can do here</h2>
             <ul class="checklist" style="margin:.75rem 0 0">
-                <li>See rough counts of tenants and usage</li>
+                <li><a href="<?= billo_e(billo_url('/system/analytics')) ?>">Platform analytics &amp; reports</a> — trends, pipeline, leaderboard, CSV export</li>
                 <li><a href="<?= billo_e(billo_url('/platform/landing')) ?>">Edit public landing / marketing copy</a></li>
             </ul>
         </div>

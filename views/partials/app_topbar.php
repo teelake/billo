@@ -4,7 +4,7 @@ declare(strict_types=1);
 use App\Core\Csrf;
 use App\Core\Session;
 
-/** @var string $active dashboard|team|clients|invoices|organization|system|platform */
+/** @var string $active dashboard|team|clients|invoices|organization|system|system-analytics|platform|analytics */
 /** @var bool $show_team_nav */
 /** @var string $user_name */
 /** @var string $role */
@@ -57,6 +57,12 @@ if (function_exists('mb_strlen') && mb_strlen($initials, 'UTF-8') > 2) {
             Invoices
         </a>
         <?php if ($canOrg): ?>
+            <a class="app-sidebar__link<?= $active === 'analytics' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/analytics')) ?>">
+                <span class="app-sidebar__icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                </span>
+                Analytics
+            </a>
             <a class="app-sidebar__link<?= $active === 'organization' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/organization')) ?>">
                 <span class="app-sidebar__icon" aria-hidden="true">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
@@ -81,6 +87,12 @@ if (function_exists('mb_strlen') && mb_strlen($initials, 'UTF-8') > 2) {
             </a>
         <?php endif; ?>
         <?php if ($isSystem): ?>
+            <a class="app-sidebar__link<?= $active === 'system-analytics' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/system/analytics')) ?>">
+                <span class="app-sidebar__icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                </span>
+                Platform analytics
+            </a>
             <a class="app-sidebar__link<?= $active === 'system' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/system')) ?>">
                 <span class="app-sidebar__icon" aria-hidden="true">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Autoloader;
+use App\Controllers\AnalyticsController;
 use App\Controllers\AuthController;
 use App\Controllers\DashboardController;
 use App\Controllers\HomeController;
@@ -72,6 +73,9 @@ $router->post('/signup', static fn () => (new AuthController($request))->signup(
 $router->post('/logout', static fn () => (new AuthController($request))->logout());
 $router->get('/dashboard', static fn () => (new DashboardController())->index());
 $router->get('/system', static fn () => (new SystemAdminController())->index());
+$router->get('/system/analytics', static fn () => (new SystemAdminController())->analytics());
+$router->get('/system/analytics/export', static fn () => (new SystemAdminController())->analyticsExport());
+$router->get('/analytics', static fn () => (new AnalyticsController())->index());
 $router->get('/clients', static fn () => (new ClientController($request))->index());
 $router->get('/clients/create', static fn () => (new ClientController($request))->create());
 $router->post('/clients', static fn () => (new ClientController($request))->store());
