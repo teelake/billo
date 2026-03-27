@@ -1,4 +1,6 @@
-config/local.php
+# App configuration (use config.example/ as template; copy to config/)
+config/
+
 .env
 storage/logs/*
 !storage/logs/.gitkeep

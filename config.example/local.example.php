@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Copy to config/local.php and adjust for your environment.
+ * Copy to config/local.php (do not commit) and adjust for your environment.
  */
 return [
     'app' => [

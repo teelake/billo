@@ -3,7 +3,8 @@
 declare(strict_types=1);
 
 /**
- * Default configuration. Override with config/local.php (not committed).
+ * Copy this folder to `config/` (see project root) and edit values.
+ * Optional overrides: copy local.example.php to config/local.php
  */
 return [
     'app' => [
