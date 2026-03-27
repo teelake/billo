@@ -1789,6 +1789,11 @@ select.input {
     vertical-align: middle;
 }
 
+.org-bank-block {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--color-border);
+}
 .org-invoicing-block {
     margin-top: 1.5rem;
     padding-top: 1.25rem;
@@ -1869,6 +1874,54 @@ select.input {
     height: 2.75rem;
     padding: 0.2rem 0.35rem;
     cursor: pointer;
+}
+
+.billo-combobox {
+    position: relative;
+}
+.billo-combobox__search {
+    width: 100%;
+}
+.billo-combobox__list {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 4px);
+    z-index: 60;
+    max-height: 14rem;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0.25rem 0;
+    list-style: none;
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+.billo-combobox__list[hidden] {
+    display: none !important;
+}
+.billo-combobox__item {
+    padding: 0.45rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    line-height: 1.35;
+}
+.billo-combobox__item:hover,
+.billo-combobox__item.is-active {
+    background: rgba(15, 23, 42, 0.06);
+}
+.billo-combobox__sub {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--color-muted);
+    margin-top: 0.15rem;
+}
+.invoice-bank-card__list {
+    margin: 0;
+    padding-left: 1.15rem;
+    color: var(--color-text);
+    line-height: 1.5;
 }
 
 .invoice-detail-grid {

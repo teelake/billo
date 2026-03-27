@@ -40,6 +40,7 @@ foreach ($clients as $cl) {
         'id' => $cid,
         'name' => $nm,
         'email' => isset($cl['email']) ? (string) $cl['email'] : '',
+        'company' => isset($cl['company_name']) ? (string) $cl['company_name'] : '',
     ];
     if ($clientIdVal !== '' && (string) $cid === $clientIdVal) {
         $selectedClientLabel = $nm;

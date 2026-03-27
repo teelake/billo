@@ -93,6 +93,7 @@ return [
         /** When the invoice has no client email, Paystack still needs an email */
         'fallback_payer_email' => '',
         'paystack' => [
+            /** Also used to refresh the Nigerian bank list on /organization (cached 24h). No key = built-in list only. */
             'secret_key' => '',
             /** optional; used later for inline card fields */
             'public_key' => '',

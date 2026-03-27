@@ -58,6 +58,9 @@ $hideTax = billo_invoice_hide_tax_column($org, $invoice);
         .letterhead img { max-height: 56px; margin-bottom: 0.5rem; }
         .letterhead-addr { font-size: 0.82rem; color: #475569; line-height: 1.45; margin: 0.35rem 0 0; }
         .letterhead-tax { font-size: 0.8rem; color: #64748b; margin: 0.5rem 0 0; }
+        .inv-bank { margin-top: 1.75rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+        .inv-bank h2 { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 0.5rem; }
+        .inv-bank ul { margin: 0; padding-left: 1.1rem; font-size: 0.88rem; color: #334155; }
         .inv-footer { margin-top: 1.75rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.82rem; color: #64748b; white-space: pre-wrap; }
         @media print {
             .no-print { display: none !important; }
@@ -189,6 +192,20 @@ $hideTax = billo_invoice_hide_tax_column($org, $invoice);
         <?php endif; ?>
         <div class="totals-row total"><span>Total</span><span><?= billo_e($currency) ?> <?= billo_e(number_format((float) ($invoice['total'] ?? 0), 2)) ?></span></div>
     </div>
+
+    <?php
+    $bankLinesPrint = billo_organization_bank_detail_lines($org);
+    ?>
+    <?php if ($bankLinesPrint !== []): ?>
+        <div class="inv-bank">
+            <h2>Bank details</h2>
+            <ul>
+                <?php foreach ($bankLinesPrint as $bl): ?>
+                    <li><?= billo_e($bl) ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    <?php endif; ?>
 
     <?php if (!empty($invoice['notes'])): ?>
         <div class="notes">

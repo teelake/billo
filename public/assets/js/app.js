@@ -78,6 +78,184 @@
     renumber();
 })();
 
+/** Searchable Nigerian bank field (business settings) */
+(function () {
+    const root = document.querySelector("[data-billo-bank-combobox]");
+    const dataEl = document.getElementById("billo-ng-banks-data");
+    if (!root || !dataEl) {
+        return;
+    }
+    let banks = [];
+    try {
+        banks = JSON.parse(dataEl.textContent || "[]");
+    } catch (e) {
+        banks = [];
+    }
+    if (!Array.isArray(banks)) {
+        banks = [];
+    }
+    const search = root.querySelector(".billo-combobox__search");
+    const list = root.querySelector(".billo-combobox__list");
+    const codeInput = root.querySelector('input[name="invoice_bank_code"]');
+    if (!search || !list || !(search instanceof HTMLInputElement) || !(codeInput instanceof HTMLInputElement)) {
+        return;
+    }
+
+    const normalize = (s) => (s || "").toLowerCase().trim();
+
+    const render = (query) => {
+        list.innerHTML = "";
+        const q = normalize(query);
+        const max = 60;
+        let n = 0;
+        for (let i = 0; i < banks.length && n < max; i++) {
+            const b = banks[i];
+            if (!b || typeof b.name !== "string" || typeof b.code !== "string") {
+                continue;
+            }
+            const name = b.name;
+            const code = b.code;
+            const hay = normalize(`${name} ${code}`);
+            if (q !== "" && !hay.includes(q)) {
+                continue;
+            }
+            const li = document.createElement("li");
+            li.className = "billo-combobox__item";
+            li.setAttribute("role", "option");
+            li.dataset.code = code;
+            li.dataset.name = name;
+            li.textContent = name;
+            list.appendChild(li);
+            n++;
+        }
+        list.hidden = n === 0;
+    };
+
+    search.addEventListener("input", () => {
+        codeInput.value = "";
+        render(search.value);
+    });
+
+    search.addEventListener("focus", () => {
+        render(search.value);
+    });
+
+    list.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+    });
+
+    list.addEventListener("click", (e) => {
+        const li = e.target && e.target.closest ? e.target.closest(".billo-combobox__item") : null;
+        if (!li || !(li instanceof HTMLElement)) {
+            return;
+        }
+        const name = li.dataset.name || "";
+        const code = li.dataset.code || "";
+        search.value = name;
+        codeInput.value = code;
+        list.hidden = true;
+    });
+
+    document.addEventListener("click", (e) => {
+        if (e.target instanceof Node && !root.contains(e.target)) {
+            list.hidden = true;
+        }
+    });
+})();
+
+/** Searchable client field (invoice create/edit) */
+(function () {
+    const root = document.querySelector("[data-billo-client-combobox]");
+    const dataEl = document.getElementById("billo-invoice-clients-data");
+    if (!root || !dataEl) {
+        return;
+    }
+    let clients = [];
+    try {
+        clients = JSON.parse(dataEl.textContent || "[]");
+    } catch (e) {
+        clients = [];
+    }
+    if (!Array.isArray(clients)) {
+        clients = [];
+    }
+    const search = root.querySelector(".billo-combobox__search");
+    const list = root.querySelector(".billo-combobox__list");
+    const idInput = root.querySelector('input[name="client_id"]');
+    if (!search || !list || !(search instanceof HTMLInputElement) || !(idInput instanceof HTMLInputElement)) {
+        return;
+    }
+
+    const normalize = (s) => (s || "").toLowerCase().trim();
+
+    const render = (query) => {
+        list.innerHTML = "";
+        const q = normalize(query);
+        const max = 50;
+        let n = 0;
+        for (let i = 0; i < clients.length && n < max; i++) {
+            const c = clients[i];
+            if (!c || typeof c.id !== "number") {
+                continue;
+            }
+            const main = typeof c.name === "string" ? c.name : "";
+            const sub = typeof c.email === "string" ? c.email : "";
+            const co = typeof c.company === "string" ? c.company : "";
+            const hay = normalize(`${main} ${sub} ${co}`);
+            if (q !== "" && !hay.includes(q)) {
+                continue;
+            }
+            const li = document.createElement("li");
+            li.className = "billo-combobox__item";
+            li.setAttribute("role", "option");
+            li.dataset.id = String(c.id);
+            li.dataset.label = main;
+            li.appendChild(document.createTextNode(main));
+            const subParts = [sub, co].filter(Boolean);
+            if (subParts.length) {
+                const span = document.createElement("span");
+                span.className = "billo-combobox__sub";
+                span.textContent = subParts.join(" · ");
+                li.appendChild(span);
+            }
+            list.appendChild(li);
+            n++;
+        }
+        list.hidden = n === 0;
+    };
+
+    search.addEventListener("input", () => {
+        idInput.value = "";
+        render(search.value);
+    });
+
+    search.addEventListener("focus", () => {
+        render(search.value);
+    });
+
+    list.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+    });
+
+    list.addEventListener("click", (e) => {
+        const li = e.target && e.target.closest ? e.target.closest(".billo-combobox__item") : null;
+        if (!li || !(li instanceof HTMLElement)) {
+            return;
+        }
+        const id = li.dataset.id || "";
+        const label = li.dataset.label || "";
+        idInput.value = id;
+        search.value = label;
+        list.hidden = true;
+    });
+
+    document.addEventListener("click", (e) => {
+        if (e.target instanceof Node && !root.contains(e.target)) {
+            list.hidden = true;
+        }
+    });
+})();
+
 /** Signup & password reset: grid-friendly live validation (rules mirror App\Support\PasswordRules) */
 (function () {
     const MIN_LEN = 10;

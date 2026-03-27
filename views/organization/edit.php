@@ -148,7 +148,7 @@ ob_start();
                         </div>
                         <div class="field">
                             <label class="label" for="invoice_bank_account_number">Account number</label>
-                            <input class="input" id="invoice_bank_account_number" name="invoice_bank_account_number" maxlength="32" inputmode="numeric" pattern="[0-9\s]*" value="<?= billo_e($val('invoice_bank_account_number')) ?>" autocomplete="off">
+                            <input class="input" id="invoice_bank_account_number" name="invoice_bank_account_number" maxlength="32" inputmode="numeric" value="<?= billo_e($val('invoice_bank_account_number')) ?>" autocomplete="off">
                         </div>
                     </div>
                 </div>

@@ -23,6 +23,7 @@ $currency = (string) ($invoice['currency'] ?? 'NGN');
 $lines = isset($invoice['lines']) && is_array($invoice['lines']) ? $invoice['lines'] : [];
 $org = isset($organization) && is_array($organization) ? $organization : [];
 $hideTax = $org !== [] && billo_invoice_hide_tax_column($org, $invoice);
+$bankLinesShow = $org !== [] ? billo_organization_bank_detail_lines($org) : [];
 $title = ($invoice['invoice_number'] ?? 'Invoice') . ' — billo';
 ob_start();
 ?>
@@ -120,6 +121,17 @@ ob_start();
                 </div>
             </div>
         </div>
+
+        <?php if ($bankLinesShow !== []): ?>
+            <div class="welcome-card invoice-bank-card" style="margin-top:1.25rem">
+                <h2 class="invoice-detail-card__h">Bank details</h2>
+                <ul class="invoice-bank-card__list">
+                    <?php foreach ($bankLinesShow as $bl): ?>
+                        <li><?= billo_e($bl) ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
 
         <?php if ($payOnlineUrl !== ''): ?>
             <div class="welcome-card" style="margin-top:1.25rem">
