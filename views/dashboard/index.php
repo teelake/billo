@@ -53,11 +53,11 @@ ob_start();
                     <div>
                         <p class="eyebrow eyebrow--dark">Platform operator</p>
                         <h2 class="platform-command__title">Live platform snapshot</h2>
-                        <p class="platform-command__lead">Cross-tenant KPIs. Your day-to-day tools (clients &amp; invoices below) stay scoped to <strong><?= billo_e($orgName) ?></strong> — this strip is platform-wide only.</p>
                     </div>
                     <div class="platform-command__actions">
                         <a class="btn btn--primary" href="<?= billo_e(billo_url('/system/analytics')) ?>">Platform analytics</a>
                         <a class="btn btn--secondary" href="<?= billo_e(billo_url('/system/reports')) ?>">Reports</a>
+                        <a class="btn btn--secondary" href="<?= billo_e(billo_url('/system/operators')) ?>">Operators</a>
                         <a class="btn btn--secondary" href="<?= billo_e(billo_url('/system/configuration')) ?>">Configuration</a>
                     </div>
                 </div>

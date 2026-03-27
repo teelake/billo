@@ -37,7 +37,6 @@ ob_start();
             <div class="analytics-hero__copy">
                 <p class="analytics-hero__eyebrow">Platform intelligence</p>
                 <h1 class="analytics-hero__title">Cross-tenant analytics</h1>
-                <p class="analytics-hero__lead">Aggregates across every organization. If tenants use multiple currencies, revenue is indicative only — not consolidated FX.</p>
             </div>
             <div class="analytics-hero__actions">
                 <a class="btn btn--secondary" href="<?= billo_e(billo_url('/system')) ?>">Overview</a>

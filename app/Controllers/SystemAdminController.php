@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Core\Controller;
 use App\Core\Csrf;
 use App\Core\Database;
 use App\Core\Request;
@@ -21,7 +20,7 @@ use App\Services\PlatformSettings;
 use DateTimeImmutable;
 use PDOException;
 
-final class SystemAdminController extends Controller
+final class SystemAdminController extends \App\Core\Controller
 {
     public function __construct(
         private Request $request,

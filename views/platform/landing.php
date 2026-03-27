@@ -23,7 +23,6 @@ ob_start();
         <div class="page-head">
             <div>
                 <h1 class="page-head__title">Marketing & landing page</h1>
-                <p class="page-head__lead">Edit public homepage copy. Empty fields fall back to built-in defaults.</p>
             </div>
             <a class="btn btn--secondary" href="<?= billo_e(billo_url('/dashboard')) ?>">Dashboard</a>
         </div>

@@ -53,7 +53,6 @@ ob_start();
             <div>
                 <p class="eyebrow eyebrow--dark">platform operator</p>
                 <h1 class="page-head__title">Platform reports</h1>
-                <p class="page-head__lead">Filter cross-tenant data, page through results, and export CSV (up to <?= (int) \App\Repositories\PlatformReportsRepository::MAX_EXPORT_ROWS ?> rows).</p>
             </div>
             <div class="page-head__actions">
                 <a class="btn btn--secondary" href="<?= billo_e(billo_url('/system/analytics')) ?>">Full analytics</a>

@@ -35,13 +35,8 @@ ob_start();
             <div>
                 <p class="eyebrow eyebrow--dark">platform operator</p>
                 <h1 class="page-head__title">Platform operators</h1>
-                <p class="page-head__lead">Grant or revoke cross-tenant access (<code>/system</code>, configuration, reports). Users sign in with their normal password; this only controls the operator grant.</p>
             </div>
             <a class="btn btn--secondary" href="<?= billo_e(billo_url('/system')) ?>">Overview</a>
-        </div>
-
-        <div class="hint-banner" style="margin-bottom:1.25rem">
-            <strong>Safety:</strong> you cannot revoke the last active operator. New operators must already have a Billo account (same email as login).
         </div>
 
         <div class="welcome-card" style="margin-bottom:1.25rem">
@@ -104,7 +99,7 @@ ob_start();
                         </tr>
                     <?php endforeach; ?>
                     <?php if (count($operators) === 0): ?>
-                        <tr><td colspan="6" class="reports-empty">No active operators. Grant one above (requires migration 010).</td></tr>
+                        <tr><td colspan="6" class="reports-empty">No active operators.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>

@@ -47,15 +47,10 @@ ob_start();
             <div>
                 <p class="eyebrow eyebrow--dark">platform operator</p>
                 <h1 class="page-head__title">Configuration</h1>
-                <p class="page-head__lead">Changes are stored in <code>platform_settings</code> and override <code>config/config.php</code> (and <code>config/local.php</code>) at runtime. Empty text fields remove the database override for that key. Secret fields: leave blank to keep the current value; tick &quot;remove&quot; to fall back to the file.</p>
             </div>
             <div class="page-head__actions">
-                <a class="btn btn--secondary" href="<?= billo_e(billo_url('/platform/landing')) ?>">Landing content</a>
+                <a class="btn btn--secondary" href="<?= billo_e(billo_url('/platform/landing')) ?>">Landing</a>
             </div>
-        </div>
-
-        <div class="hint-banner" style="margin-bottom:1.25rem">
-            <strong>Production tip:</strong> keep API keys in <code>config/local.php</code> when possible; use this UI for URLs, brand, mail identity, and non-secret toggles. Anyone with system operator access can read secrets present in the database.
         </div>
 
         <form class="config-form" method="post" action="<?= billo_e(billo_url('/system/configuration')) ?>">

@@ -30,20 +30,8 @@ ob_start();
             <div>
                 <p class="eyebrow eyebrow--dark">system operator</p>
                 <h1 class="page-head__title">Platform overview</h1>
-                <p class="page-head__lead">Cross-tenant view. Day-to-day work stays in your organization dashboard.</p>
             </div>
             <a class="btn btn--secondary" href="<?= billo_e(billo_url('/dashboard')) ?>">Dashboard</a>
-        </div>
-
-        <div class="welcome-card" style="margin-bottom:1.25rem">
-            <h2 class="invoice-detail-card__h">What you can do here</h2>
-            <ul class="checklist" style="margin:.75rem 0 0">
-                <li><a href="<?= billo_e(billo_url('/system/analytics')) ?>">Platform analytics</a> — trends, charts, org leaderboard, org-level CSV export</li>
-                <li><a href="<?= billo_e(billo_url('/system/reports')) ?>">Platform reports</a> — filterable organizations, invoices, and users with pagination + export</li>
-                <li><a href="<?= billo_e(billo_url('/system/operators')) ?>">Platform operators</a> — grant or revoke system access (no separate passwords)</li>
-                <li><a href="<?= billo_e(billo_url('/system/configuration')) ?>">Configuration</a> — edit platform settings stored in the database (overrides file config)</li>
-                <li><a href="<?= billo_e(billo_url('/platform/landing')) ?>">Edit public landing / marketing copy</a></li>
-            </ul>
         </div>
 
         <div class="feature-grid" style="grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:1rem">
