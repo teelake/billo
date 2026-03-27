@@ -3,6 +3,7 @@ declare(strict_types=1);
 /** @var string $content */
 /** @var string $title */
 $pageTitle = $title ?? billo_brand_name();
+$authBodyExtra = isset($auth_body_class) && is_string($auth_body_class) && $auth_body_class !== '' ? ' ' . $auth_body_class : '';
 $authTagline = billo_brand_tagline();
 $authLead = $authTagline !== ''
     ? $authTagline
@@ -21,7 +22,7 @@ $authLead = $authTagline !== ''
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= billo_e(billo_asset('css/app.css')) ?>">
 </head>
-<body class="layout-auth">
+<body class="layout-auth<?= billo_e($authBodyExtra) ?>">
 <a class="skip-link" href="#auth-panel">Skip to form</a>
 <div class="auth-shell">
     <div class="auth-shell__brand">

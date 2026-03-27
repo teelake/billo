@@ -55,16 +55,20 @@ ob_start();
                 <p class="field-feedback" id="name-feedback" role="status" aria-live="polite"></p>
             </div>
         <?php endif; ?>
-        <div class="field">
-            <label class="label" for="password">Password</label>
-            <input class="input" id="password" name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128" aria-describedby="password-hint password-strength">
-            <p class="hint" id="password-hint">At least 10 characters, with letters and numbers. Include an uppercase letter or a symbol (e.g. ! @ #) so it’s not easy to guess.</p>
+        <div class="signup-password-block">
+            <div class="field-grid field-grid--signup-pw">
+                <div class="field">
+                    <label class="label" for="password">Password</label>
+                    <input class="input" id="password" name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128" aria-describedby="password-hint password-strength">
+                </div>
+                <div class="field">
+                    <label class="label" for="password_confirm">Confirm password</label>
+                    <input class="input" id="password_confirm" name="password_confirm" type="password" autocomplete="new-password" required minlength="10" maxlength="128" aria-describedby="password-confirm-feedback">
+                    <p class="field-feedback" id="password-confirm-feedback" role="status" aria-live="polite"></p>
+                </div>
+            </div>
+            <p class="hint signup-password-block__hint" id="password-hint">10+ characters, letters and numbers, plus an uppercase letter or symbol (e.g. ! @ #).</p>
             <p class="field-feedback" id="password-strength" role="status" aria-live="polite"></p>
-        </div>
-        <div class="field">
-            <label class="label" for="password_confirm">Confirm password</label>
-            <input class="input" id="password_confirm" name="password_confirm" type="password" autocomplete="new-password" required minlength="10" maxlength="128" aria-describedby="password-confirm-feedback">
-            <p class="field-feedback" id="password-confirm-feedback" role="status" aria-live="polite"></p>
         </div>
         <button class="btn btn--primary btn--block" type="submit"><?= $isInvite ? 'Join organization' : 'Create account' ?></button>
     </form>
@@ -72,4 +76,5 @@ ob_start();
 </div>
 <?php
 $content = ob_get_clean();
+$auth_body_class = 'layout-auth--signup';
 require dirname(__DIR__) . '/layouts/auth.php';
