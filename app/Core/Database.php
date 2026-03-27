@@ -39,13 +39,8 @@ final class Database
                 PDO::ATTR_EMULATE_PREPARES => false,
             ]);
         } catch (PDOException $e) {
-            $debug = (bool) Config::get('app.debug', false);
             error_log('Billo DB connection failed: ' . $e->getMessage());
-            http_response_code(503);
-            echo $debug
-                ? 'Database connection failed: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8')
-                : 'Service temporarily unavailable.';
-            exit;
+            throw $e;
         }
 
         return self::$pdo;

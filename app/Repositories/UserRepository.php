@@ -12,7 +12,7 @@ final class UserRepository
     public function findByEmail(string $email): ?array
     {
         $stmt = Database::pdo()->prepare(
-            'SELECT id, email, password_hash, name, email_verified_at, active_organization_id, created_at
+            'SELECT id, email, password_hash, name, email_verified_at, is_system_admin, active_organization_id, created_at
              FROM users WHERE email = :email LIMIT 1'
         );
         $stmt->execute(['email' => strtolower(trim($email))]);
@@ -24,7 +24,7 @@ final class UserRepository
     public function findById(int $id): ?array
     {
         $stmt = Database::pdo()->prepare(
-            'SELECT id, email, password_hash, name, email_verified_at, active_organization_id, created_at
+            'SELECT id, email, password_hash, name, email_verified_at, is_system_admin, active_organization_id, created_at
              FROM users WHERE id = :id LIMIT 1'
         );
         $stmt->execute(['id' => $id]);
@@ -75,5 +75,15 @@ final class UserRepository
             'id' => $userId,
             'organization_id' => $organizationId,
         ]);
+    }
+
+    public function countAll(): int
+    {
+        $n = Database::pdo()->query('SELECT COUNT(*) FROM users')->fetchColumn();
+        if ($n === false) {
+            return 0;
+        }
+
+        return (int) $n;
     }
 }

@@ -85,4 +85,14 @@ final class OrganizationRepository
 
         return true;
     }
+
+    public function countAll(): int
+    {
+        $n = Database::pdo()->query('SELECT COUNT(*) FROM organizations')->fetchColumn();
+        if ($n === false) {
+            return 0;
+        }
+
+        return (int) $n;
+    }
 }

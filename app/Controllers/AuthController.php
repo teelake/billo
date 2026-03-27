@@ -10,6 +10,7 @@ use App\Core\Request;
 use App\Core\Session;
 use App\Core\View;
 use App\Services\AuthService;
+use PDOException;
 
 final class AuthController extends Controller
 {
@@ -49,20 +50,27 @@ final class AuthController extends Controller
             $this->redirect('/login');
         }
 
-        if (!$this->auth->attemptLogin($email, $password ?? '')) {
-            Session::flash('error', 'Invalid email or password.');
+        try {
+            if (!$this->auth->attemptLogin($email, $password ?? '')) {
+                Session::flash('error', 'Invalid email or password.');
+                Session::set('old_login_email', $email ?? '');
+                $this->redirect('/login');
+            }
+
+            $hadInvitePending = $this->auth->hasPendingInvitationInSession();
+            $userId = (int) Session::get('user_id');
+            $userEmail = (string) Session::get('user_email');
+            $inviteError = $this->auth->completePendingInvitationForUser($userId, $userEmail);
+            if ($inviteError !== null) {
+                Session::flash('error', $inviteError);
+            } elseif ($hadInvitePending) {
+                Session::flash('success', 'You’ve joined the organization.');
+            }
+        } catch (PDOException $e) {
+            error_log('Auth login: ' . $e->getMessage());
+            Session::flash('error', 'Cannot connect to the database. Check MySQL and config/config.php.');
             Session::set('old_login_email', $email ?? '');
             $this->redirect('/login');
-        }
-
-        $hadInvitePending = $this->auth->hasPendingInvitationInSession();
-        $userId = (int) Session::get('user_id');
-        $userEmail = (string) Session::get('user_email');
-        $inviteError = $this->auth->completePendingInvitationForUser($userId, $userEmail);
-        if ($inviteError !== null) {
-            Session::flash('error', $inviteError);
-        } elseif ($hadInvitePending) {
-            Session::flash('success', 'You’ve joined the organization.');
         }
 
         $this->redirect('/dashboard');
@@ -70,36 +78,47 @@ final class AuthController extends Controller
 
     public function showSignup(): void
     {
-        if ($this->authContext() !== null) {
-            $this->redirect('/dashboard');
-        }
+        try {
+            if ($this->authContext() !== null) {
+                $this->redirect('/dashboard');
+            }
 
-        if ($this->auth->hasPendingInvitationInSession() && $this->request->input('invited', '') !== '1') {
-            $this->redirect('/signup?invited=1');
-        }
+            if ($this->auth->hasPendingInvitationInSession() && $this->request->input('invited', '') !== '1') {
+                $this->redirect('/signup?invited=1');
+            }
 
-        if ($this->request->input('invited', '') === '1' && !$this->auth->hasPendingInvitationInSession()) {
-            Session::flash('error', 'Open the invitation link from your email first.');
-            $this->redirect('/signup');
-        }
+            if ($this->request->input('invited', '') === '1' && !$this->auth->hasPendingInvitationInSession()) {
+                Session::flash('error', 'Open the invitation link from your email first.');
+                $this->redirect('/signup');
+            }
 
-        $old = Session::get('old_signup');
-        Session::remove('old_signup');
-        $defaults = is_array($old) ? $old : [];
-        $invite = $this->auth->getPendingInvitationForSignupDisplay();
-        $emailDefault = isset($defaults['email']) && is_string($defaults['email']) ? $defaults['email'] : '';
-        if (is_array($invite) && isset($invite['email'])) {
-            $emailDefault = (string) $invite['email'];
-        }
+            $old = Session::get('old_signup');
+            Session::remove('old_signup');
+            $defaults = is_array($old) ? $old : [];
+            $invite = $this->auth->getPendingInvitationForSignupDisplay();
+            $emailDefault = isset($defaults['email']) && is_string($defaults['email']) ? $defaults['email'] : '';
+            if (is_array($invite) && isset($invite['email'])) {
+                $emailDefault = (string) $invite['email'];
+            }
 
-        View::render('auth/signup', [
-            'error' => Session::flash('error') ?? '',
-            'name' => isset($defaults['name']) && is_string($defaults['name']) ? $defaults['name'] : '',
-            'email' => $emailDefault,
-            'organization_name' => isset($defaults['organization_name']) && is_string($defaults['organization_name'])
-                ? $defaults['organization_name'] : '',
-            'invite' => $invite,
-        ]);
+            View::render('auth/signup', [
+                'error' => Session::flash('error') ?? '',
+                'name' => isset($defaults['name']) && is_string($defaults['name']) ? $defaults['name'] : '',
+                'email' => $emailDefault,
+                'organization_name' => isset($defaults['organization_name']) && is_string($defaults['organization_name'])
+                    ? $defaults['organization_name'] : '',
+                'invite' => $invite,
+            ]);
+        } catch (PDOException $e) {
+            error_log('Auth showSignup: ' . $e->getMessage());
+            View::render('auth/signup', [
+                'error' => 'Cannot connect to the database. Check that MySQL is running and config/config.php (db.*) is correct.',
+                'name' => '',
+                'email' => '',
+                'organization_name' => '',
+                'invite' => null,
+            ]);
+        }
     }
 
     public function signup(): void
@@ -129,14 +148,21 @@ final class AuthController extends Controller
             $this->redirect('/signup');
         }
 
-        if ($this->auth->hasPendingInvitationInSession()) {
-            $result = $this->auth->registerWithInvitation($email ?? '', $password ?? '', $name ?? '');
-        } else {
-            $result = $this->auth->register($email ?? '', $password ?? '', $name ?? '', $organizationName ?? '');
-        }
+        try {
+            if ($this->auth->hasPendingInvitationInSession()) {
+                $result = $this->auth->registerWithInvitation($email ?? '', $password ?? '', $name ?? '');
+            } else {
+                $result = $this->auth->register($email ?? '', $password ?? '', $name ?? '', $organizationName ?? '');
+            }
 
-        if ($result !== true) {
-            Session::flash('error', $result);
+            if ($result !== true) {
+                Session::flash('error', $result);
+                $preserveOld();
+                $this->redirect('/signup');
+            }
+        } catch (PDOException $e) {
+            error_log('Auth signup: ' . $e->getMessage());
+            Session::flash('error', 'Cannot connect to the database. Check MySQL and config/config.php.');
             $preserveOld();
             $this->redirect('/signup');
         }

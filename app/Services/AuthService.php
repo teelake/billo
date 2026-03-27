@@ -363,6 +363,8 @@ final class AuthService
         Session::set('role', $membership['role']);
         Session::set('user_name', (string) $userRow['name']);
         Session::set('user_email', (string) $userRow['email']);
+        $sys = isset($userRow['is_system_admin']) ? (int) $userRow['is_system_admin'] : 0;
+        Session::set('is_system_admin', $sys === 1);
     }
 
     private function issueVerificationEmail(int $userId): void

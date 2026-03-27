@@ -69,6 +69,7 @@ return [
     ],
     /**
      * Emails (lowercase) allowed to edit marketing/landing content at /platform/landing.
+     * System operators (users.is_system_admin in DB) can also open /platform/landing and /system.
      */
     'platform' => [
         'admin_emails' => [

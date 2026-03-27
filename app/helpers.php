@@ -90,6 +90,16 @@ function billo_invoice_pay_links_available(): bool
     return \App\Services\Payments\PaymentGatewayFactory::invoicePayLinksAvailable();
 }
 
+/** Set on login from users.is_system_admin (database). */
+function billo_is_system_admin(): bool
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        return false;
+    }
+
+    return Session::get('is_system_admin') === true;
+}
+
 function billo_is_platform_admin(): bool
 {
     if (session_status() !== PHP_SESSION_ACTIVE) {

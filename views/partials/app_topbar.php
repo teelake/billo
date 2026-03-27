@@ -22,6 +22,9 @@ use App\Core\Csrf;
                 <?php if (!empty($show_team_nav)): ?>
                     <a class="app-subnav__link<?= ($active ?? '') === 'team' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/team')) ?>">Team</a>
                 <?php endif; ?>
+                <?php if (function_exists('billo_is_system_admin') && billo_is_system_admin()): ?>
+                    <a class="app-subnav__link<?= ($active ?? '') === 'system' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/system')) ?>">System</a>
+                <?php endif; ?>
             </nav>
         </div>
         <div class="app-topbar__user">

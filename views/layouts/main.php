@@ -66,8 +66,11 @@ $metaDescription = $brandTagline !== ''
                 <h3 class="site-footer__heading">Account</h3>
                 <ul class="site-footer__list">
                     <li><a href="<?= billo_e(billo_url('/login')) ?>">Log in</a></li>
-                    <?php if (billo_is_platform_admin()): ?>
+                    <?php if (billo_is_platform_admin() || billo_is_system_admin()): ?>
                         <li><a href="<?= billo_e(billo_url('/platform/landing')) ?>">Edit landing page</a></li>
+                    <?php endif; ?>
+                    <?php if (billo_is_system_admin()): ?>
+                        <li><a href="<?= billo_e(billo_url('/system')) ?>">System admin</a></li>
                     <?php endif; ?>
                 </ul>
             </div>

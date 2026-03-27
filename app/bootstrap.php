@@ -13,6 +13,7 @@ use App\Controllers\PayController;
 use App\Controllers\PlatformLandingController;
 use App\Controllers\PaystackWebhookController;
 use App\Controllers\StripeWebhookController;
+use App\Controllers\SystemAdminController;
 use App\Controllers\TeamController;
 use App\Core\Config;
 use App\Core\Request;
@@ -70,6 +71,7 @@ $router->get('/signup', static fn () => (new AuthController($request))->showSign
 $router->post('/signup', static fn () => (new AuthController($request))->signup());
 $router->post('/logout', static fn () => (new AuthController($request))->logout());
 $router->get('/dashboard', static fn () => (new DashboardController())->index());
+$router->get('/system', static fn () => (new SystemAdminController())->index());
 $router->get('/clients', static fn () => (new ClientController($request))->index());
 $router->get('/clients/create', static fn () => (new ClientController($request))->create());
 $router->post('/clients', static fn () => (new ClientController($request))->store());

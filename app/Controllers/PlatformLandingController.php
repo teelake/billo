@@ -101,7 +101,7 @@ final class PlatformLandingController extends Controller
             Session::flash('error', 'Sign in to manage the platform.');
             $this->redirect('/login');
         }
-        if (!billo_is_platform_admin()) {
+        if (!billo_is_platform_admin() && !billo_is_system_admin()) {
             Session::flash('error', 'You do not have platform access.');
             $this->redirect('/dashboard');
         }
