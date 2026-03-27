@@ -28,35 +28,31 @@ ob_start();
     <form class="form" method="post" action="<?= billo_e(billo_url('/signup')) ?>" novalidate data-signup-form>
         <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
         <?php if ($isInvite): ?>
-            <div class="field-grid field-grid--signup">
-                <div class="field">
-                    <label class="label" for="name">Your name</label>
-                    <input class="input" id="name" name="name" type="text" autocomplete="name" required maxlength="120" value="<?= billo_e($name) ?>" aria-describedby="name-feedback">
-                    <p class="field-feedback" id="name-feedback" role="status" aria-live="polite"></p>
-                </div>
-                <div class="field">
-                    <label class="label" for="email">Work email</label>
-                    <input class="input" id="email" name="email" type="email" inputmode="email" autocomplete="email" required value="<?= billo_e($email) ?>" aria-describedby="email-feedback" readonly aria-readonly="true">
-                    <p class="field-feedback" id="email-feedback" role="status" aria-live="polite"></p>
-                </div>
+            <div class="field">
+                <label class="label" for="email">Work email</label>
+                <input class="input" id="email" name="email" type="email" inputmode="email" autocomplete="email" required value="<?= billo_e($email) ?>" aria-describedby="email-feedback" readonly aria-readonly="true">
+                <p class="field-feedback" id="email-feedback" role="status" aria-live="polite"></p>
+            </div>
+            <div class="field">
+                <label class="label" for="name">Your name</label>
+                <input class="input" id="name" name="name" type="text" autocomplete="name" required maxlength="120" value="<?= billo_e($name) ?>" aria-describedby="name-feedback">
+                <p class="field-feedback" id="name-feedback" role="status" aria-live="polite"></p>
             </div>
         <?php else: ?>
-            <div class="field-grid field-grid--signup">
-                <div class="field">
-                    <label class="label" for="name">Your name</label>
-                    <input class="input" id="name" name="name" type="text" autocomplete="name" required maxlength="120" value="<?= billo_e($name) ?>" aria-describedby="name-feedback">
-                    <p class="field-feedback" id="name-feedback" role="status" aria-live="polite"></p>
-                </div>
-                <div class="field">
-                    <label class="label" for="organization_name">Organization name</label>
-                    <input class="input" id="organization_name" name="organization_name" type="text" autocomplete="organization" required maxlength="200" value="<?= billo_e($organization_name) ?>" aria-describedby="organization-feedback">
-                    <p class="field-feedback" id="organization-feedback" role="status" aria-live="polite"></p>
-                </div>
-            </div>
             <div class="field">
                 <label class="label" for="email">Work email</label>
                 <input class="input" id="email" name="email" type="email" inputmode="email" autocomplete="email" required value="<?= billo_e($email) ?>" aria-describedby="email-feedback">
                 <p class="field-feedback" id="email-feedback" role="status" aria-live="polite"></p>
+            </div>
+            <div class="field">
+                <label class="label" for="organization_name">Organization name</label>
+                <input class="input" id="organization_name" name="organization_name" type="text" autocomplete="organization" required maxlength="200" value="<?= billo_e($organization_name) ?>" aria-describedby="organization-feedback">
+                <p class="field-feedback" id="organization-feedback" role="status" aria-live="polite"></p>
+            </div>
+            <div class="field">
+                <label class="label" for="name">Your name</label>
+                <input class="input" id="name" name="name" type="text" autocomplete="name" required maxlength="120" value="<?= billo_e($name) ?>" aria-describedby="name-feedback">
+                <p class="field-feedback" id="name-feedback" role="status" aria-live="polite"></p>
             </div>
         <?php endif; ?>
         <div class="field">

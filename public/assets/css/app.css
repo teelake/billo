@@ -785,10 +785,6 @@ a:hover {
     padding: clamp(1.75rem, 3.5vw, 2.5rem);
 }
 
-.auth-card--signup .field-grid {
-    gap: 1.25rem;
-}
-
 .auth-card__title {
     font-family: var(--font-display);
     font-weight: 700;
@@ -828,12 +824,6 @@ a:hover {
     }
 }
 
-/* Signup: stack a bit earlier on narrow phones so labels don’t feel squeezed */
-@media (max-width: 560px) {
-    .field-grid--signup {
-        grid-template-columns: 1fr;
-    }
-}
 
 .field-grid > .field {
     min-width: 0;
