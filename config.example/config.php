@@ -76,13 +76,25 @@ return [
         ],
     ],
     /**
-     * Public invoice pay links (HMAC) and Stripe Checkout / webhooks.
-     * Prefer secrets in config/local.php.
+     * Invoice pay links: HMAC signing + one active gateway (paystack, stripe, or none).
+     * Secrets are best kept in config/local.php.
      */
     'payments' => [
+        /** paystack | stripe | none */
+        'provider' => 'paystack',
+        /** Random string; signs /pay?token= for public links */
         'link_signing_secret' => '',
-        'stripe_secret_key' => '',
-        'stripe_publishable_key' => '',
-        'stripe_webhook_secret' => '',
+        /** When the invoice has no client email, Paystack still needs an email */
+        'fallback_payer_email' => '',
+        'paystack' => [
+            'secret_key' => '',
+            /** optional; used later for inline card fields */
+            'public_key' => '',
+        ],
+        /** Install: composer require stripe/stripe-php */
+        'stripe' => [
+            'secret_key' => '',
+            'webhook_secret' => '',
+        ],
     ],
 ];

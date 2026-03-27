@@ -1,4 +1,6 @@
 -- Provider-neutral payment columns (Paystack, Stripe, or future gateways).
+-- Run only after 006_payments_credit_notes.sql (expects stripe_* columns to exist).
+-- Fresh installs that use database/schema.sql directly already have gateway_* columns — skip this file.
 
 SET NAMES utf8mb4;
 

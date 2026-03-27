@@ -74,9 +74,13 @@ final class PayController extends Controller
     {
         $gateway = PaymentGatewayFactory::active();
         if ($gateway->isConfigured()) {
-            $done = $gateway->completeFromReturn(
-                array_map(static fn ($v) => is_string($v) ? $v : '', $_GET),
-            );
+            $query = [];
+            foreach ($_GET as $key => $val) {
+                if (is_string($val)) {
+                    $query[$key] = $val;
+                }
+            }
+            $done = $gateway->completeFromReturn($query);
             if ($done !== null) {
                 $this->invoices->markPaidFromGateway(
                     $done['invoice_id'],

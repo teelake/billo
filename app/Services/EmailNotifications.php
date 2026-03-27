@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Core\Config;
+use App\Services\Payments\PaymentGatewayFactory;
 
 final class EmailNotifications
 {
@@ -142,7 +143,7 @@ final class EmailNotifications
             $invKind === 'invoice'
             && $invStatus === 'sent'
             && $invTotal > 0
-            && (new StripeCheckoutService())->isConfigured()
+            && PaymentGatewayFactory::invoicePayLinksAvailable()
         ) {
             $payUrl = (new PaymentLinkService())->buildUrl((int) ($invoice['id'] ?? 0), (int) ($invoice['organization_id'] ?? 0));
         }

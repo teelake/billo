@@ -129,6 +129,44 @@ final class PaystackGateway implements PaymentGatewayInterface
         return $this->resolvePaidInvoiceFromPaystackData($data, $ref, 'webhook');
     }
 
+    /**
+     * @param array<string, mixed> $data
+     * @return array{invoice_id: int, organization_id: int, transaction_ref: string}|null
+     */
+    private function resolvePaidInvoiceFromPaystackData(array $data, string $ref, string $logContext): ?array
+    {
+        $meta = isset($data['metadata']) && is_array($data['metadata']) ? $data['metadata'] : [];
+        $invoiceId = (int) ($meta['invoice_id'] ?? 0);
+        $orgId = (int) ($meta['organization_id'] ?? 0);
+        if ($invoiceId <= 0 || $orgId <= 0) {
+            $row = (new \App\Repositories\InvoiceRepository())->findByGatewayCheckoutRef($ref);
+            if ($row === null) {
+                return null;
+            }
+            $invoiceId = (int) $row['id'];
+            $orgId = (int) $row['organization_id'];
+        }
+
+        $paid = isset($data['amount']) ? (int) $data['amount'] : null;
+        $currency = strtoupper((string) ($data['currency'] ?? 'NGN'));
+        if ($paid !== null && !$this->amountMatchesInvoice($paid, $currency, $invoiceId, $orgId)) {
+            error_log('Paystack ' . $logContext . ': amount mismatch for invoice ' . $invoiceId);
+
+            return null;
+        }
+
+        $txRef = trim((string) ($data['reference'] ?? $ref));
+        if ($txRef === '') {
+            $txRef = trim((string) ($data['id'] ?? ''));
+        }
+
+        return [
+            'invoice_id' => $invoiceId,
+            'organization_id' => $orgId,
+            'transaction_ref' => $txRef !== '' ? $txRef : $ref,
+        ];
+    }
+
     public function verifyWebhookSignature(string $payload, string $signatureHeader): bool
     {
         $sk = trim((string) Config::get('payments.paystack.secret_key', ''));

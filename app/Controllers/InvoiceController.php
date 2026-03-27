@@ -15,7 +15,7 @@ use App\Repositories\OrganizationRepository;
 use App\Services\EmailNotifications;
 use App\Services\InvoicePdfService;
 use App\Services\PaymentLinkService;
-use App\Services\StripeCheckoutService;
+use App\Services\Payments\PaymentGatewayFactory;
 
 final class InvoiceController extends Controller
 {
@@ -62,9 +62,8 @@ final class InvoiceController extends Controller
 
         $status = (string) ($invoice['status'] ?? '');
         $payOnlineUrl = '';
-        $stripe = new StripeCheckoutService();
         if (
-            $stripe->isConfigured()
+            PaymentGatewayFactory::invoicePayLinksAvailable()
             && ($invoice['invoice_kind'] ?? 'invoice') === 'invoice'
             && $status === 'sent'
             && (float) ($invoice['total'] ?? 0) > 0

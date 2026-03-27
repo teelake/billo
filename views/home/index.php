@@ -94,7 +94,7 @@ ob_start();
     <div class="container narrow">
         <header class="section__header">
             <h2 class="section__title"><?= billo_e(billo_landing('pricing_title', 'Pricing that scales with you')) ?></h2>
-            <p class="section__lead"><?= billo_e(billo_landing('pricing_lead', 'Plans, limits, and Stripe billing are configured from the platform admin—so you always ship the right offer.')) ?></p>
+            <p class="section__lead"><?= billo_e(billo_landing('pricing_lead', 'Plans, limits, and your payment provider are configured from the platform—so you always ship the right offer.')) ?></p>
         </header>
         <div class="pricing-card">
             <h3 class="pricing-card__title"><?= billo_e(billo_landing('pricing_card_title', 'Launch offers')) ?></h3>

@@ -85,6 +85,11 @@ function billo_landing(string $key, string $default = ''): string
 }
 
 /** Session user email is listed in config platform.admin_emails (list of strings). */
+function billo_invoice_pay_links_available(): bool
+{
+    return \App\Services\Payments\PaymentGatewayFactory::invoicePayLinksAvailable();
+}
+
 function billo_is_platform_admin(): bool
 {
     if (session_status() !== PHP_SESSION_ACTIVE) {

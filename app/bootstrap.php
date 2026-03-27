@@ -11,6 +11,7 @@ use App\Controllers\InvoiceController;
 use App\Controllers\OrganizationController;
 use App\Controllers\PayController;
 use App\Controllers\PlatformLandingController;
+use App\Controllers\PaystackWebhookController;
 use App\Controllers\StripeWebhookController;
 use App\Controllers\TeamController;
 use App\Core\Config;
@@ -92,6 +93,7 @@ $router->post('/invoices/credit-note', static fn () => (new InvoiceController($r
 $router->get('/pay', static fn () => (new PayController())->checkout());
 $router->get('/pay/return', static fn () => (new PayController())->returnPage());
 $router->get('/pay/cancel', static fn () => (new PayController())->cancelPage());
+$router->post('/webhooks/paystack', static fn () => (new PaystackWebhookController())->handle());
 $router->post('/webhooks/stripe', static fn () => (new StripeWebhookController())->handle());
 $router->get('/platform/landing', static fn () => (new PlatformLandingController($request))->edit());
 $router->post('/platform/landing', static fn () => (new PlatformLandingController($request))->save());
