@@ -778,10 +778,15 @@ a:hover {
     box-shadow: var(--shadow-md);
 }
 
-/* Wider card + room for two columns (name + org, or invite: name + email) */
+/* Signup: wider card so two-column row + email/password copy breathe (login stays 400px) */
 .auth-card--signup {
-    width: min(100%, 34rem);
+    width: min(100%, 44rem);
     max-width: 100%;
+    padding: clamp(1.75rem, 3.5vw, 2.5rem);
+}
+
+.auth-card--signup .field-grid {
+    gap: 1.25rem;
 }
 
 .auth-card__title {
