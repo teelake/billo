@@ -242,28 +242,22 @@ final class SystemAdminController extends \App\Core\Controller
         }
 
         if ($type === 'organizations') {
-            fputcsv($out, ['row', 'organization_id', 'name', 'slug', 'created_at']);
-            $rn = 0;
+            fputcsv($out, ['organization_id', 'name', 'slug', 'created_at']);
             foreach ($this->platformReports->exportOrganizationsCsv($q, $createdFrom, $createdTo) as $row) {
-                ++$rn;
-                fputcsv($out, array_merge([$rn], $row));
+                fputcsv($out, $row);
             }
         } elseif ($type === 'invoices') {
             fputcsv($out, [
-                'row', 'invoice_id', 'organization_id', 'organization', 'invoice_number', 'status',
+                'invoice_id', 'organization_id', 'organization', 'invoice_number', 'status',
                 'total', 'currency', 'issue_date', 'created_at',
             ]);
-            $rn = 0;
             foreach ($this->platformReports->exportInvoicesCsv($status, $organizationId, $dateFrom, $dateTo, $invQ) as $row) {
-                ++$rn;
-                fputcsv($out, array_merge([$rn], $row));
+                fputcsv($out, $row);
             }
         } else {
-            fputcsv($out, ['row', 'user_id', 'email', 'name', 'platform_operator', 'created_at']);
-            $rn = 0;
+            fputcsv($out, ['user_id', 'email', 'name', 'platform_operator', 'created_at']);
             foreach ($this->platformReports->exportUsersCsv($q, $createdFrom, $createdTo) as $row) {
-                ++$rn;
-                fputcsv($out, array_merge([$rn], $row));
+                fputcsv($out, $row);
             }
         }
         fclose($out);
