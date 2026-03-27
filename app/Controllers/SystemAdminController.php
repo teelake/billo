@@ -11,12 +11,14 @@ use App\Core\Request;
 use App\Core\Session;
 use App\Core\View;
 use App\Repositories\OrganizationRepository;
+use App\Repositories\PlatformAdminGrantRepository;
 use App\Repositories\PlatformAnalyticsRepository;
 use App\Repositories\PlatformReportsRepository;
 use App\Repositories\PlatformSettingsRepository;
 use App\Repositories\UserRepository;
 use App\Services\PlatformConfigurationStore;
 use App\Services\PlatformSettings;
+use DateTimeImmutable;
 use PDOException;
 
 final class SystemAdminController extends Controller
@@ -28,6 +30,7 @@ final class SystemAdminController extends Controller
         private PlatformAnalyticsRepository $platformAnalytics = new PlatformAnalyticsRepository(),
         private PlatformReportsRepository $platformReports = new PlatformReportsRepository(),
         private PlatformConfigurationStore $platformConfig = new PlatformConfigurationStore(),
+        private PlatformAdminGrantRepository $platformAdminGrants = new PlatformAdminGrantRepository(),
     ) {
     }
 
@@ -230,7 +233,7 @@ final class SystemAdminController extends Controller
                 fputcsv($out, $row);
             }
         } else {
-            fputcsv($out, ['user_id', 'email', 'name', 'is_system_admin', 'created_at']);
+            fputcsv($out, ['user_id', 'email', 'name', 'platform_operator', 'created_at']);
             foreach ($this->platformReports->exportUsersCsv($q) as $row) {
                 fputcsv($out, $row);
             }
@@ -266,6 +269,102 @@ final class SystemAdminController extends Controller
             'error' => Session::flash('error') ?? '',
             'success' => Session::flash('success') ?? '',
         ]);
+    }
+
+    public function operators(): void
+    {
+        $this->requireSystemAdmin();
+
+        View::render('system/operators', [
+            'operators' => $this->platformAdminGrants->listActiveWithUsers(),
+            'active_count' => $this->platformAdminGrants->countActiveGrants(),
+            'current_user_id' => (int) Session::get('user_id', 0),
+            'user_name' => (string) Session::get('user_name', ''),
+            'role' => (string) Session::get('role', 'owner'),
+            'show_team_nav' => in_array(Session::get('role', ''), ['owner', 'admin'], true),
+            'error' => Session::flash('error') ?? '',
+            'success' => Session::flash('success') ?? '',
+        ]);
+    }
+
+    public function operatorsGrant(): void
+    {
+        $this->requireSystemAdmin();
+        if (!Csrf::validate($this->request->input('_csrf'))) {
+            Session::flash('error', 'Invalid session. Try again.');
+            $this->redirect('/system/operators');
+        }
+
+        $emailRaw = $this->request->input('email', '') ?? '';
+        $email = strtolower(trim((string) $emailRaw));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            Session::flash('error', 'Enter a valid email address.');
+            $this->redirect('/system/operators');
+        }
+
+        $user = $this->users->findByEmail($email);
+        if ($user === null) {
+            Session::flash('error', 'No account with that email. The person must sign up first.');
+            $this->redirect('/system/operators');
+        }
+
+        $notesRaw = $this->request->input('notes', '') ?? '';
+        $notes = trim((string) $notesRaw);
+        $notesVal = $notes === '' ? null : (function_exists('mb_substr')
+            ? mb_substr($notes, 0, 500, 'UTF-8')
+            : substr($notes, 0, 500));
+
+        $expSql = null;
+        $expRaw = $this->request->input('expires_at', '') ?? '';
+        $expTrim = trim((string) $expRaw);
+        if ($expTrim !== '') {
+            $dt = DateTimeImmutable::createFromFormat('Y-m-d\TH:i', $expTrim);
+            if ($dt === false) {
+                Session::flash('error', 'Use a valid expiry date and time.');
+                $this->redirect('/system/operators');
+            }
+            if ($dt <= new DateTimeImmutable('now')) {
+                Session::flash('error', 'Expiry must be in the future.');
+                $this->redirect('/system/operators');
+            }
+            $expSql = $dt->format('Y-m-d H:i:s');
+        }
+
+        $me = (int) Session::get('user_id', 0);
+        $this->platformAdminGrants->ensureGrant((int) $user['id'], $me > 0 ? $me : null, $notesVal, $expSql);
+
+        Session::flash('success', 'Platform operator access granted for ' . $email . '.');
+        $this->redirect('/system/operators');
+    }
+
+    public function operatorsRevoke(): void
+    {
+        $this->requireSystemAdmin();
+        if (!Csrf::validate($this->request->input('_csrf'))) {
+            Session::flash('error', 'Invalid session. Try again.');
+            $this->redirect('/system/operators');
+        }
+
+        $target = (int) ($this->request->input('user_id', '0') ?? '0');
+        if ($target <= 0) {
+            Session::flash('error', 'Invalid user.');
+            $this->redirect('/system/operators');
+        }
+
+        if (!$this->platformAdminGrants->userHasActiveGrant($target)) {
+            Session::flash('error', 'That user does not have active platform access.');
+            $this->redirect('/system/operators');
+        }
+
+        if ($this->platformAdminGrants->countActiveGrants() <= 1) {
+            Session::flash('error', 'You cannot revoke the last platform operator. Grant another operator first.');
+            $this->redirect('/system/operators');
+        }
+
+        $this->platformAdminGrants->revoke($target);
+
+        Session::flash('success', 'Platform operator access revoked.');
+        $this->redirect('/system/operators');
     }
 
     private function requireSystemAdmin(): void

@@ -246,7 +246,7 @@ final class PlatformReportsRepository
     }
 
     /**
-     * @return list<array{id:int,email:string,name:string,is_system_admin:int,created_at:string}>
+     * @return list<array{id:int,email:string,name:string,platform_operator:int,created_at:string}>
      */
     public function listUsers(int $page, int $perPage, string $q): array
     {
@@ -254,21 +254,23 @@ final class PlatformReportsRepository
         $perPage = $this->clampPerPage($perPage);
         $offset = ($page - 1) * $perPage;
         $out = [];
+        $baseSql = 'SELECT u.id, u.email, u.name, u.created_at,
+            CASE WHEN g.user_id IS NOT NULL THEN 1 ELSE 0 END AS platform_operator
+            FROM users u
+            LEFT JOIN platform_admin_grants g ON g.user_id = u.id AND g.revoked_at IS NULL
+                AND (g.expires_at IS NULL OR g.expires_at > CURRENT_TIMESTAMP)';
         try {
             $pdo = Database::pdo();
             if (trim($q) === '') {
-                $st = $pdo->prepare(
-                    'SELECT id, email, name, is_system_admin, created_at FROM users ORDER BY id DESC LIMIT :lim OFFSET :off'
-                );
+                $st = $pdo->prepare($baseSql . ' ORDER BY u.id DESC LIMIT :lim OFFSET :off');
                 $st->bindValue('lim', $perPage, PDO::PARAM_INT);
                 $st->bindValue('off', $offset, PDO::PARAM_INT);
                 $st->execute();
             } else {
                 $like = '%' . $this->likeFragment($q) . '%';
                 $st = $pdo->prepare(
-                    'SELECT id, email, name, is_system_admin, created_at FROM users
-                     WHERE email LIKE :l ESCAPE \'\\\\\' OR name LIKE :l2 ESCAPE \'\\\\\'
-                     ORDER BY id DESC LIMIT :lim OFFSET :off'
+                    $baseSql . ' WHERE u.email LIKE :l ESCAPE \'\\\\\' OR u.name LIKE :l2 ESCAPE \'\\\\\'
+                     ORDER BY u.id DESC LIMIT :lim OFFSET :off'
                 );
                 $st->bindValue('l', $like);
                 $st->bindValue('l2', $like);
@@ -281,7 +283,7 @@ final class PlatformReportsRepository
                     'id' => (int) $row['id'],
                     'email' => (string) $row['email'],
                     'name' => (string) $row['name'],
-                    'is_system_admin' => (int) $row['is_system_admin'],
+                    'platform_operator' => (int) $row['platform_operator'],
                     'created_at' => (string) $row['created_at'],
                 ];
             }
@@ -391,18 +393,20 @@ final class PlatformReportsRepository
     public function exportUsersCsv(string $q): array
     {
         $rows = [];
+        $baseSql = 'SELECT u.id, u.email, u.name, u.created_at,
+            CASE WHEN g.user_id IS NOT NULL THEN 1 ELSE 0 END AS platform_operator
+            FROM users u
+            LEFT JOIN platform_admin_grants g ON g.user_id = u.id AND g.revoked_at IS NULL
+                AND (g.expires_at IS NULL OR g.expires_at > CURRENT_TIMESTAMP)';
         try {
             $pdo = Database::pdo();
             if (trim($q) === '') {
-                $st = $pdo->query(
-                    'SELECT id, email, name, is_system_admin, created_at FROM users ORDER BY id DESC LIMIT ' . self::MAX_EXPORT_ROWS
-                );
+                $st = $pdo->query($baseSql . ' ORDER BY u.id DESC LIMIT ' . self::MAX_EXPORT_ROWS);
             } else {
                 $like = '%' . $this->likeFragment($q) . '%';
                 $st = $pdo->prepare(
-                    'SELECT id, email, name, is_system_admin, created_at FROM users
-                     WHERE email LIKE :l ESCAPE \'\\\\\' OR name LIKE :l2 ESCAPE \'\\\\\'
-                     ORDER BY id DESC LIMIT ' . self::MAX_EXPORT_ROWS
+                    $baseSql . ' WHERE u.email LIKE :l ESCAPE \'\\\\\' OR u.name LIKE :l2 ESCAPE \'\\\\\'
+                     ORDER BY u.id DESC LIMIT ' . self::MAX_EXPORT_ROWS
                 );
                 $st->execute(['l' => $like, 'l2' => $like]);
             }
@@ -414,7 +418,7 @@ final class PlatformReportsRepository
                     (int) $row['id'],
                     (string) $row['email'],
                     (string) $row['name'],
-                    (int) $row['is_system_admin'],
+                    (int) $row['platform_operator'],
                     (string) $row['created_at'],
                 ];
             }

@@ -187,7 +187,7 @@ ob_start();
                             <th class="num">ID</th>
                             <th>Email</th>
                             <th>Name</th>
-                            <th>Operator</th>
+                            <th>Platform operator</th>
                             <th>Created</th>
                         </tr>
                     </thead>
@@ -200,7 +200,7 @@ ob_start();
                                 <td class="num"><?= (int) ($r['id'] ?? 0) ?></td>
                                 <td><?= billo_e((string) ($r['email'] ?? '')) ?></td>
                                 <td><?= billo_e((string) ($r['name'] ?? '')) ?></td>
-                                <td><?= !empty($r['is_system_admin']) ? 'yes' : '—' ?></td>
+                                <td><?= !empty($r['platform_operator']) ? 'yes' : '—' ?></td>
                                 <td><?= billo_e((string) ($r['created_at'] ?? '')) ?></td>
                             </tr>
                         <?php endforeach; ?>

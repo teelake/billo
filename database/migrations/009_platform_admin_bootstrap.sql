@@ -27,3 +27,5 @@ SELECT @billo_platform_org, id, 'owner'
 FROM users
 WHERE email = 'platform-admin@billo.local'
 LIMIT 1;
+
+-- Then run 010_platform_admin_grants.sql so /system uses platform_admin_grants (backfills from is_system_admin).

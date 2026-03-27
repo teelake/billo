@@ -10,6 +10,7 @@ use App\Core\Session;
 use App\Repositories\EmailVerificationRepository;
 use App\Repositories\InvitationRepository;
 use App\Repositories\MemberRepository;
+use App\Repositories\PlatformAdminGrantRepository;
 use App\Repositories\OrganizationRepository;
 use App\Repositories\PasswordResetRepository;
 use App\Repositories\UserRepository;
@@ -367,8 +368,7 @@ final class AuthService
         Session::set('role', $membership['role']);
         Session::set('user_name', (string) $userRow['name']);
         Session::set('user_email', (string) $userRow['email']);
-        $sys = isset($userRow['is_system_admin']) ? (int) $userRow['is_system_admin'] : 0;
-        Session::set('is_system_admin', $sys === 1);
+        Session::set('is_system_admin', $this->platformAdminGrants->userHasActiveGrant($userId));
     }
 
     private function issueVerificationEmail(int $userId): void

@@ -13,8 +13,8 @@ declare(strict_types=1);
  *
  * Omit --password to generate a one-time random password (printed to stdout only).
  *
- * Idempotent: if the email already exists, grants is_system_admin, ensures membership
- * in the internal org, and optional --password updates the hash.
+ * Idempotent: ensures platform_admin_grants + internal org membership; sets legacy
+ * users.is_system_admin for backfill/migration. Optional --password updates the hash.
  */
 
 if (php_sapi_name() !== 'cli') {
@@ -140,6 +140,13 @@ try {
         'INSERT IGNORE INTO organization_members (organization_id, user_id, role) VALUES (:org_id, :user_id, \'owner\')'
     );
     $stmt->execute(['org_id' => $orgId, 'user_id' => $userId]);
+
+    $stmt = $pdo->prepare(
+        'INSERT INTO platform_admin_grants (user_id, granted_by_user_id, notes, revoked_at, expires_at)
+         VALUES (:uid, NULL, NULL, NULL, NULL)
+         ON DUPLICATE KEY UPDATE revoked_at = NULL, granted_at = CURRENT_TIMESTAMP, expires_at = VALUES(expires_at)'
+    );
+    $stmt->execute(['uid' => $userId]);
 
     $pdo->commit();
 } catch (Throwable $e) {

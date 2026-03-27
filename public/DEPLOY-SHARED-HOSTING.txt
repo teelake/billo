@@ -52,7 +52,7 @@ WWW
 
 PLATFORM OPERATOR (/system)
   There is no separate “system login”. Use the normal /login, then open /system.
-  To create your owner account (internal org + is_system_admin), SSH or local PHP with DB configured:
+  To create your platform operator (platform_admin_grants + internal org), SSH or local PHP with DB configured:
     cd .../billo
     php scripts/bootstrap-platform-admin.php your@email.com
   A random password is printed once. Or set it explicitly:

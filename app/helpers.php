@@ -90,14 +90,33 @@ function billo_invoice_pay_links_available(): bool
     return \App\Services\Payments\PaymentGatewayFactory::invoicePayLinksAvailable();
 }
 
-/** Set on login from users.is_system_admin (database). */
+/**
+ * True when the signed-in user has an active row in platform_admin_grants.
+ * Password and identity remain on users; grants only confer platform operator access.
+ */
 function billo_is_system_admin(): bool
 {
     if (session_status() !== PHP_SESSION_ACTIVE) {
         return false;
     }
 
-    return Session::get('is_system_admin') === true;
+    $uid = Session::get('user_id');
+    if (!is_numeric($uid)) {
+        return false;
+    }
+
+    /** @var int|null */
+    static $cachedUid = null;
+    /** @var bool|null */
+    static $cached = null;
+    $uid = (int) $uid;
+    if ($cached !== null && $cachedUid === $uid) {
+        return $cached;
+    }
+    $cachedUid = $uid;
+    $cached = (new \App\Repositories\PlatformAdminGrantRepository())->userHasActiveGrant($uid);
+
+    return $cached;
 }
 
 function billo_is_platform_admin(): bool
