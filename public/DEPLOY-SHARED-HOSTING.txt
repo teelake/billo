@@ -49,3 +49,12 @@ VERIFY
 
 WWW
   Set config app.url to https://www.webspace.ng (with www) if that is what you use.
+
+PLATFORM OPERATOR (/system)
+  There is no separate “system login”. Use the normal /login, then open /system.
+  To create your owner account (internal org + is_system_admin), SSH or local PHP with DB configured:
+    cd .../billo
+    php scripts/bootstrap-platform-admin.php your@email.com
+  A random password is printed once. Or set it explicitly:
+    php scripts/bootstrap-platform-admin.php your@email.com --password='YourStr0ng!Pass'
+  Re-run safely: same email gets system admin + org link; add --password to rotate.
