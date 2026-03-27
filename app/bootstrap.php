@@ -8,6 +8,7 @@ use App\Controllers\AuthController;
 use App\Controllers\DashboardController;
 use App\Controllers\HomeController;
 use App\Controllers\ClientController;
+use App\Controllers\NavContextController;
 use App\Controllers\InvoiceController;
 use App\Controllers\OrganizationController;
 use App\Controllers\PayController;
@@ -71,6 +72,7 @@ $router->post('/login', static fn () => (new AuthController($request))->login())
 $router->get('/signup', static fn () => (new AuthController($request))->showSignup());
 $router->post('/signup', static fn () => (new AuthController($request))->signup());
 $router->post('/logout', static fn () => (new AuthController($request))->logout());
+$router->get('/session/app-mode', static fn () => (new NavContextController($request))->switchMode());
 $router->get('/dashboard', static fn () => (new DashboardController())->index());
 $router->get('/system', static fn () => (new SystemAdminController($request))->index());
 $router->get('/system/analytics', static fn () => (new SystemAdminController($request))->analytics());

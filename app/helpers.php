@@ -119,6 +119,20 @@ function billo_is_system_admin(): bool
     return $cached;
 }
 
+/**
+ * Sidebar context for system admins: organization (tenant UX) vs platform (operator tools).
+ * Everyone else is treated as organization.
+ */
+function billo_app_nav_mode(): string
+{
+    if (!function_exists('billo_is_system_admin') || !billo_is_system_admin()) {
+        return 'organization';
+    }
+    $m = (string) Session::get('app_nav_mode', 'organization');
+
+    return $m === 'platform' ? 'platform' : 'organization';
+}
+
 function billo_is_platform_admin(): bool
 {
     if (session_status() !== PHP_SESSION_ACTIVE) {

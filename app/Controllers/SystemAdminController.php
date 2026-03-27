@@ -377,5 +377,6 @@ final class SystemAdminController extends \App\Core\Controller
             Session::flash('error', 'You do not have system operator access.');
             $this->redirect('/dashboard');
         }
+        Session::set('app_nav_mode', 'platform');
     }
 }

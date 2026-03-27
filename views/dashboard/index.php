@@ -47,7 +47,7 @@ ob_start();
             </div>
         <?php endif; ?>
 
-        <?php if ($is_platform_operator && $platform_summary !== null): ?>
+        <?php if ($is_platform_operator && $platform_summary !== null && function_exists('billo_app_nav_mode') && billo_app_nav_mode() === 'platform'): ?>
             <div class="platform-command">
                 <div class="platform-command__head">
                     <div>

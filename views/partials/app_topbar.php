@@ -18,6 +18,9 @@ $canOrg = in_array($role, ['owner', 'admin'], true);
 $canPlatform = (function_exists('billo_is_platform_admin') && billo_is_platform_admin())
     || (function_exists('billo_is_system_admin') && billo_is_system_admin());
 $isSystem = function_exists('billo_is_system_admin') && billo_is_system_admin();
+$navMode = function_exists('billo_app_nav_mode') ? billo_app_nav_mode() : 'organization';
+$showOrgNav = !$isSystem || $navMode === 'organization';
+$showPlatformOperatorNav = $isSystem && $navMode === 'platform';
 
 $initials = 'B';
 if ($userName !== '') {
@@ -44,40 +47,43 @@ if (function_exists('mb_strlen') && mb_strlen($initials, 'UTF-8') > 2) {
             </span>
             Dashboard
         </a>
-        <a class="app-sidebar__link<?= $active === 'clients' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/clients')) ?>">
-            <span class="app-sidebar__icon" aria-hidden="true">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            </span>
-            Clients
-        </a>
-        <a class="app-sidebar__link<?= $active === 'invoices' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/invoices')) ?>">
-            <span class="app-sidebar__icon" aria-hidden="true">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            </span>
-            Invoices
-        </a>
-        <?php if ($canOrg): ?>
-            <a class="app-sidebar__link<?= $active === 'analytics' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/analytics')) ?>">
+        <?php if ($showOrgNav): ?>
+            <a class="app-sidebar__link<?= $active === 'clients' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/clients')) ?>">
                 <span class="app-sidebar__icon" aria-hidden="true">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 </span>
-                Analytics
+                Clients
             </a>
-            <a class="app-sidebar__link<?= $active === 'organization' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/organization')) ?>">
+            <a class="app-sidebar__link<?= $active === 'invoices' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/invoices')) ?>">
                 <span class="app-sidebar__icon" aria-hidden="true">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                 </span>
-                Business
+                Invoices
             </a>
+            <?php if ($canOrg): ?>
+                <a class="app-sidebar__link<?= $active === 'analytics' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/analytics')) ?>">
+                    <span class="app-sidebar__icon" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    </span>
+                    Analytics
+                </a>
+                <a class="app-sidebar__link<?= $active === 'organization' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/organization')) ?>">
+                    <span class="app-sidebar__icon" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                    </span>
+                    Business
+                </a>
+            <?php endif; ?>
+            <?php if ($showTeam): ?>
+                <a class="app-sidebar__link<?= $active === 'team' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/team')) ?>">
+                    <span class="app-sidebar__icon" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </span>
+                    Team
+                </a>
+            <?php endif; ?>
         <?php endif; ?>
-        <?php if ($showTeam): ?>
-            <a class="app-sidebar__link<?= $active === 'team' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/team')) ?>">
-                <span class="app-sidebar__icon" aria-hidden="true">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                </span>
-                Team
-            </a>
-        <?php endif; ?>
+
         <?php if ($canPlatform): ?>
             <a class="app-sidebar__link<?= $active === 'platform' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/platform/landing')) ?>">
                 <span class="app-sidebar__icon" aria-hidden="true">
@@ -86,7 +92,8 @@ if (function_exists('mb_strlen') && mb_strlen($initials, 'UTF-8') > 2) {
                 Landing page
             </a>
         <?php endif; ?>
-        <?php if ($isSystem): ?>
+
+        <?php if ($showPlatformOperatorNav): ?>
             <a class="app-sidebar__link<?= $active === 'system-analytics' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/system/analytics')) ?>">
                 <span class="app-sidebar__icon" aria-hidden="true">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
@@ -117,6 +124,17 @@ if (function_exists('mb_strlen') && mb_strlen($initials, 'UTF-8') > 2) {
                 </span>
                 System
             </a>
+        <?php endif; ?>
+
+        <?php if ($isSystem): ?>
+            <div class="app-sidebar__mode" role="group" aria-label="Navigation context">
+                <span class="app-sidebar__mode-label"><?= $navMode === 'platform' ? 'Platform view' : 'Organization view' ?></span>
+                <?php if ($navMode === 'organization'): ?>
+                    <a class="app-sidebar__mode-toggle" href="<?= billo_e(billo_url('/session/app-mode?mode=platform')) ?>">Switch to platform</a>
+                <?php else: ?>
+                    <a class="app-sidebar__mode-toggle" href="<?= billo_e(billo_url('/session/app-mode?mode=organization')) ?>">Switch to organization</a>
+                <?php endif; ?>
+            </div>
         <?php endif; ?>
     </nav>
     <button type="button" class="app-sidebar__scrim" id="app-sidebar-scrim" hidden aria-label="Close menu" tabindex="-1"></button>
