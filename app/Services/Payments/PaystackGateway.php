@@ -36,7 +36,9 @@ final class PaystackGateway implements PaymentGatewayInterface
 
         $invoiceId = (int) ($invoice['id'] ?? 0);
         $currency = strtoupper((string) ($invoice['currency'] ?? 'NGN'));
-        $total = (float) ($invoice['total'] ?? 0);
+        $total = function_exists('billo_invoice_payable_amount')
+            ? \billo_invoice_payable_amount($invoice)
+            : (float) ($invoice['total'] ?? 0);
         if ($total <= 0) {
             throw new \InvalidArgumentException('Invoice total must be positive.');
         }
@@ -73,6 +75,93 @@ final class PaystackGateway implements PaymentGatewayInterface
             'redirect_url' => (string) $res['data']['authorization_url'],
             'checkout_ref' => $reference,
         ];
+    }
+
+    /**
+     * Hosted checkout for subscription plan purchase (metadata.subscription_order_id).
+     *
+     * @return array{redirect_url: string, checkout_ref: string}
+     */
+    public function beginSubscriptionCheckout(
+        int $orderId,
+        int $organizationId,
+        int $planId,
+        float $amount,
+        string $currency,
+        string $email,
+    ): array {
+        $sk = trim((string) Config::get('payments.paystack.secret_key', ''));
+        if (!$this->isConfigured()) {
+            throw new \RuntimeException('Paystack is not configured.');
+        }
+
+        $currency = strtoupper(substr($currency, 0, 3));
+        $total = max(0.0, $amount);
+        if ($total <= 0) {
+            throw new \InvalidArgumentException('Subscription amount must be positive.');
+        }
+
+        $amountKobo = $this->amountInSubunit($total, $currency);
+        if ($amountKobo < 100) {
+            throw new \InvalidArgumentException('Amount too small for Paystack.');
+        }
+
+        $reference = 'b1_s_o' . $organizationId . '_ord' . $orderId . '_' . bin2hex(random_bytes(6));
+        $emailNorm = strtolower(trim($email));
+        if ($emailNorm === '' || !filter_var($emailNorm, FILTER_VALIDATE_EMAIL)) {
+            $emailNorm = $this->resolvePayerEmail([]);
+        }
+
+        $callback = \billo_url('/pay/return');
+        $payload = [
+            'email' => $emailNorm,
+            'amount' => $amountKobo,
+            'currency' => $currency,
+            'reference' => $reference,
+            'callback_url' => $callback,
+            'metadata' => [
+                'subscription_order_id' => (string) $orderId,
+                'organization_id' => (string) $organizationId,
+                'plan_id' => (string) $planId,
+            ],
+        ];
+
+        $res = $this->request('POST', '/transaction/initialize', $sk, $payload);
+        if (!($res['status'] ?? false) || !isset($res['data']['authorization_url'])) {
+            $msg = (string) ($res['message'] ?? 'Paystack initialize failed');
+            error_log('Paystack subscription init: ' . $msg);
+            throw new \RuntimeException($msg);
+        }
+
+        return [
+            'redirect_url' => (string) $res['data']['authorization_url'],
+            'checkout_ref' => $reference,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null Paystack data object when charge succeeded
+     */
+    public function verifySuccessfulCharge(string $reference): ?array
+    {
+        if (!$this->isConfigured()) {
+            return null;
+        }
+        $ref = trim($reference);
+        if ($ref === '') {
+            return null;
+        }
+        $sk = trim((string) Config::get('payments.paystack.secret_key', ''));
+        $res = $this->request('GET', '/transaction/verify/' . rawurlencode($ref), $sk, null);
+        if (!($res['status'] ?? false)) {
+            return null;
+        }
+        $data = $res['data'] ?? [];
+        if (!is_array($data) || ($data['status'] ?? '') !== 'success') {
+            return null;
+        }
+
+        return $data;
     }
 
     public function completeFromReturn(array $queryParams): ?array
@@ -214,7 +303,10 @@ final class PaystackGateway implements PaymentGatewayInterface
         if ($cur !== $currency) {
             return false;
         }
-        $expected = $this->amountInSubunit((float) ($inv['total'] ?? 0), $cur);
+        $expectedTotal = function_exists('billo_invoice_payable_amount')
+            ? \billo_invoice_payable_amount($inv)
+            : (float) ($inv['total'] ?? 0);
+        $expected = $this->amountInSubunit($expectedTotal, $cur);
 
         return $paidSubunits === $expected;
     }

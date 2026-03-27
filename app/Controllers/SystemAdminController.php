@@ -10,6 +10,8 @@ use App\Core\Request;
 use App\Core\Session;
 use App\Core\View;
 use App\Repositories\OrganizationRepository;
+use App\Repositories\PlanRepository;
+use App\Repositories\TaxConfigRepository;
 use App\Repositories\PlatformAdminGrantRepository;
 use App\Repositories\PlatformAnalyticsRepository;
 use App\Repositories\PlatformReportsRepository;
@@ -30,6 +32,7 @@ final class SystemAdminController extends \App\Core\Controller
         private PlatformReportsRepository $platformReports = new PlatformReportsRepository(),
         private PlatformConfigurationStore $platformConfig = new PlatformConfigurationStore(),
         private PlatformAdminGrantRepository $platformAdminGrants = new PlatformAdminGrantRepository(),
+        private PlanRepository $plans = new PlanRepository(),
     ) {
     }
 
@@ -387,6 +390,240 @@ final class SystemAdminController extends \App\Core\Controller
 
         Session::flash('success', 'Platform operator access revoked.');
         $this->redirect('/system/operators');
+    }
+
+    public function plans(): void
+    {
+        $this->requireSystemAdmin();
+
+        $rows = $this->plans->listAll();
+        $tableMissing = false;
+        if ($rows === []) {
+            try {
+                Database::pdo()->query('SELECT 1 FROM subscription_plans LIMIT 1');
+            } catch (PDOException) {
+                $tableMissing = true;
+            }
+        }
+
+        View::render('system/plans', [
+            'plan_rows' => $rows,
+            'table_missing' => $tableMissing,
+            'user_name' => (string) Session::get('user_name', ''),
+            'role' => (string) Session::get('role', 'owner'),
+            'show_team_nav' => in_array(Session::get('role', ''), ['owner', 'admin'], true),
+            'error' => Session::flash('error') ?? '',
+            'success' => Session::flash('success') ?? '',
+        ]);
+    }
+
+    public function plansSave(): void
+    {
+        $this->requireSystemAdmin();
+        if (!Csrf::validate($this->request->input('_csrf'))) {
+            Session::flash('error', 'Invalid session. Try again.');
+            $this->redirect('/system/plans');
+        }
+
+        $normalizeSlug = static function (string $raw): string {
+            $s = strtolower(trim($raw));
+            $s = preg_replace('/[^a-z0-9-]+/', '-', $s) ?? '';
+            $s = trim($s, '-');
+
+            return substr($s, 0, 64);
+        };
+
+        $updates = $_POST['plan_update'] ?? null;
+        if (is_array($updates)) {
+            foreach ($updates as $idRaw => $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $id = (int) $idRaw;
+                if ($id <= 0) {
+                    continue;
+                }
+                $existing = $this->plans->findById($id);
+                if ($existing === null) {
+                    continue;
+                }
+                $slug = $normalizeSlug((string) ($row['slug'] ?? ''));
+                $name = trim((string) ($row['name'] ?? ''));
+                if ($slug === '' || $name === '') {
+                    Session::flash('error', 'Each plan needs a slug and name.');
+                    $this->redirect('/system/plans');
+                }
+                $descRaw = trim((string) ($row['description'] ?? ''));
+                $description = $descRaw === '' ? null : (function_exists('mb_substr') ? mb_substr($descRaw, 0, 2000, 'UTF-8') : substr($descRaw, 0, 2000));
+                $priceRaw = trim((string) ($row['price_amount'] ?? '0'));
+                $price = is_numeric($priceRaw) ? (float) $priceRaw : 0.0;
+                if ($price < 0) {
+                    $price = 0.0;
+                }
+                $currency = strtoupper(substr(trim((string) ($row['currency'] ?? 'NGN')), 0, 3));
+                if ($currency === '') {
+                    $currency = 'NGN';
+                }
+                $intv = strtolower(trim((string) ($row['billing_interval'] ?? 'monthly')));
+                if (!in_array($intv, ['monthly', 'yearly', 'lifetime'], true)) {
+                    $intv = 'monthly';
+                }
+                $sortRaw = trim((string) ($row['sort_order'] ?? '0'));
+                $sort = is_numeric($sortRaw) ? (int) $sortRaw : 0;
+                $active = !empty($row['is_active']) && (string) $row['is_active'] === '1';
+                try {
+                    $this->plans->update($id, $slug, $name, $description, $price, $currency, $intv, $sort, $active);
+                } catch (PDOException) {
+                    Session::flash('error', 'Could not save plans. Check the database and migrations.');
+                    $this->redirect('/system/plans');
+                }
+            }
+        }
+
+        $create = $_POST['plan_create'] ?? null;
+        if (is_array($create)) {
+            $slug = $normalizeSlug((string) ($create['slug'] ?? ''));
+            $name = trim((string) ($create['name'] ?? ''));
+            if ($slug !== '' && $name !== '') {
+                $descRaw = trim((string) ($create['description'] ?? ''));
+                $description = $descRaw === '' ? null : (function_exists('mb_substr') ? mb_substr($descRaw, 0, 2000, 'UTF-8') : substr($descRaw, 0, 2000));
+                $priceRaw = trim((string) ($create['price_amount'] ?? '0'));
+                $price = is_numeric($priceRaw) ? (float) $priceRaw : 0.0;
+                if ($price < 0) {
+                    $price = 0.0;
+                }
+                $currency = strtoupper(substr(trim((string) ($create['currency'] ?? 'NGN')), 0, 3));
+                if ($currency === '') {
+                    $currency = 'NGN';
+                }
+                $intv = strtolower(trim((string) ($create['billing_interval'] ?? 'monthly')));
+                if (!in_array($intv, ['monthly', 'yearly', 'lifetime'], true)) {
+                    $intv = 'monthly';
+                }
+                $sortRaw = trim((string) ($create['sort_order'] ?? '0'));
+                $sort = is_numeric($sortRaw) ? (int) $sortRaw : 0;
+                $active = isset($create['is_active']) && (string) $create['is_active'] === '1';
+                try {
+                    $this->plans->create($slug, $name, $description, $price, $currency, $intv, $sort, $active);
+                } catch (PDOException) {
+                    Session::flash('error', 'Could not create plan (duplicate slug or DB error).');
+                    $this->redirect('/system/plans');
+                }
+            }
+        }
+
+        Session::flash('success', 'Subscription plans saved.');
+        $this->redirect('/system/plans');
+    }
+
+    public function taxes(): void
+    {
+        $this->requireSystemAdmin();
+
+        $rows = [];
+        $tableMissing = false;
+        try {
+            $rows = (new TaxConfigRepository())->listAll();
+        } catch (PDOException) {
+            $tableMissing = true;
+        }
+
+        View::render('system/taxes', [
+            'tax_rows' => $rows,
+            'table_missing' => $tableMissing,
+            'user_name' => (string) Session::get('user_name', ''),
+            'role' => (string) Session::get('role', 'owner'),
+            'show_team_nav' => in_array(Session::get('role', ''), ['owner', 'admin'], true),
+            'error' => Session::flash('error') ?? '',
+            'success' => Session::flash('success') ?? '',
+        ]);
+    }
+
+    public function taxesSave(): void
+    {
+        $this->requireSystemAdmin();
+        if (!Csrf::validate($this->request->input('_csrf'))) {
+            Session::flash('error', 'Invalid session. Please try again.');
+            $this->redirect('/system/taxes');
+        }
+
+        $action = trim((string) $this->request->input('tax_action', ''));
+        $repo = new TaxConfigRepository();
+
+        if ($action === 'create') {
+            $name = trim((string) $this->request->input('name', ''));
+            $nameLenC = function_exists('mb_strlen') ? mb_strlen($name, 'UTF-8') : strlen($name);
+            if ($name === '' || $nameLenC > 120) {
+                Session::flash('error', 'Enter a tax name (up to 120 characters).');
+                $this->redirect('/system/taxes');
+            }
+            $type = strtolower(trim((string) $this->request->input('type', 'additive')));
+            if (!in_array($type, ['additive', 'deductive'], true)) {
+                $type = 'additive';
+            }
+            $rateRaw = trim((string) $this->request->input('rate', ''));
+            if ($rateRaw === '' || !is_numeric($rateRaw)) {
+                Session::flash('error', 'Rate must be a number.');
+                $this->redirect('/system/taxes');
+            }
+            $rate = (float) $rateRaw;
+            if ($rate < 0 || $rate > 100) {
+                Session::flash('error', 'Rate must be between 0 and 100.');
+                $this->redirect('/system/taxes');
+            }
+            $active = isset($_POST['is_active']) && (string) $_POST['is_active'] === '1';
+            try {
+                $repo->create($name, $type, $rate, $active);
+            } catch (PDOException) {
+                Session::flash('error', 'Could not save tax. Run database migrations if this is a new install.');
+                $this->redirect('/system/taxes');
+            }
+            Session::flash('success', 'Tax template created.');
+            $this->redirect('/system/taxes');
+        }
+
+        if ($action === 'update') {
+            $id = (int) $this->request->input('id', 0);
+            if ($id <= 0) {
+                Session::flash('error', 'Invalid tax record.');
+                $this->redirect('/system/taxes');
+            }
+            $name = trim((string) $this->request->input('name', ''));
+            $nameLenU = function_exists('mb_strlen') ? mb_strlen($name, 'UTF-8') : strlen($name);
+            if ($name === '' || $nameLenU > 120) {
+                Session::flash('error', 'Enter a tax name (up to 120 characters).');
+                $this->redirect('/system/taxes');
+            }
+            $type = strtolower(trim((string) $this->request->input('type', 'additive')));
+            if (!in_array($type, ['additive', 'deductive'], true)) {
+                $type = 'additive';
+            }
+            $rateRaw = trim((string) $this->request->input('rate', ''));
+            if ($rateRaw === '' || !is_numeric($rateRaw)) {
+                Session::flash('error', 'Rate must be a number.');
+                $this->redirect('/system/taxes');
+            }
+            $rate = (float) $rateRaw;
+            if ($rate < 0 || $rate > 100) {
+                Session::flash('error', 'Rate must be between 0 and 100.');
+                $this->redirect('/system/taxes');
+            }
+            $active = isset($_POST['is_active']) && (string) $_POST['is_active'] === '1';
+            try {
+                if (!$repo->update($id, $name, $type, $rate, $active)) {
+                    Session::flash('error', 'Tax record not found.');
+                    $this->redirect('/system/taxes');
+                }
+            } catch (PDOException) {
+                Session::flash('error', 'Could not update tax.');
+                $this->redirect('/system/taxes');
+            }
+            Session::flash('success', 'Tax template updated.');
+            $this->redirect('/system/taxes');
+        }
+
+        Session::flash('error', 'Nothing to save.');
+        $this->redirect('/system/taxes');
     }
 
     private function requireSystemAdmin(): void

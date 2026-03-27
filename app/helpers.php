@@ -139,13 +139,45 @@ function billo_app_nav_mode(): string
  * @param array<string, mixed>|null $organization
  */
 /**
- * Hide tax column/row when org has tax disabled and this document has no tax amount.
+ * Standard invoice using document-level VAT/WHT (not per-line tax).
+ *
+ * @param array<string, mixed> $invoice
+ */
+function billo_invoice_use_document_tax(array $invoice): bool
+{
+    if (($invoice['invoice_kind'] ?? 'invoice') !== 'invoice') {
+        return false;
+    }
+
+    return (($invoice['tax_computation'] ?? 'line') === 'document');
+}
+
+/**
+ * Amount the client should pay (net after WHT for document tax; otherwise invoice total).
+ *
+ * @param array<string, mixed> $invoice
+ */
+function billo_invoice_payable_amount(array $invoice): float
+{
+    if (billo_invoice_use_document_tax($invoice) && array_key_exists('net_payable', $invoice)) {
+        return (float) ($invoice['net_payable'] ?? 0);
+    }
+
+    return (float) ($invoice['total'] ?? 0);
+}
+
+/**
+ * Hide per-line tax % column when using document tax, or when org disabled line tax and no line tax applied.
  *
  * @param array<string, mixed> $organization
  * @param array<string, mixed> $invoice
  */
 function billo_invoice_hide_tax_column(array $organization, array $invoice): bool
 {
+    if (billo_invoice_use_document_tax($invoice)) {
+        return true;
+    }
+
     if ((int) ($organization['invoice_tax_enabled'] ?? 1) !== 0) {
         return false;
     }

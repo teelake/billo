@@ -4,7 +4,7 @@ declare(strict_types=1);
 use App\Core\Csrf;
 use App\Core\Session;
 
-/** @var string $active dashboard|team|clients|invoices|organization|system|system-analytics|system-reports|system-operators|system-configuration|platform|analytics */
+/** @var string $active dashboard|team|billing|clients|invoices|organization|system|system-analytics|system-reports|system-operators|system-configuration|system-plans|system-taxes|platform|analytics */
 /** @var bool $show_team_nav */
 /** @var string $user_name */
 /** @var string $role */
@@ -73,6 +73,12 @@ if (function_exists('mb_strlen') && mb_strlen($initials, 'UTF-8') > 2) {
                     </span>
                     Business
                 </a>
+                <a class="app-sidebar__link<?= $active === 'billing' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/billing')) ?>">
+                    <span class="app-sidebar__icon" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                    </span>
+                    Plans &amp; billing
+                </a>
             <?php endif; ?>
             <?php if ($showTeam): ?>
                 <a class="app-sidebar__link<?= $active === 'team' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/team')) ?>">
@@ -117,6 +123,18 @@ if (function_exists('mb_strlen') && mb_strlen($initials, 'UTF-8') > 2) {
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
                 </span>
                 Configuration
+            </a>
+            <a class="app-sidebar__link<?= $active === 'system-plans' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/system/plans')) ?>">
+                <span class="app-sidebar__icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+                </span>
+                Subscription plans
+            </a>
+            <a class="app-sidebar__link<?= $active === 'system-taxes' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/system/taxes')) ?>">
+                <span class="app-sidebar__icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg>
+                </span>
+                Tax templates
             </a>
             <a class="app-sidebar__link<?= $active === 'system' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/system')) ?>">
                 <span class="app-sidebar__icon" aria-hidden="true">

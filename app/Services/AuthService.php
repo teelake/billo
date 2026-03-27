@@ -12,6 +12,8 @@ use App\Repositories\InvitationRepository;
 use App\Repositories\MemberRepository;
 use App\Repositories\PlatformAdminGrantRepository;
 use App\Repositories\OrganizationRepository;
+use App\Repositories\OrganizationSubscriptionRepository;
+use App\Repositories\OrganizationTaxRepository;
 use App\Repositories\PasswordResetRepository;
 use App\Repositories\UserRepository;
 use App\Support\PasswordRules;
@@ -101,6 +103,8 @@ final class AuthService
             $orgId = $this->organizations->create($organizationName, $slug);
             $this->members->attach($orgId, $userId, 'owner');
             $this->users->setActiveOrganization($userId, $orgId);
+            (new OrganizationTaxRepository())->ensureDefaults($orgId);
+            (new OrganizationSubscriptionRepository())->ensureFreePlan($orgId);
             $pdo->commit();
         } catch (PDOException $e) {
             $pdo->rollBack();

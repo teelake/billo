@@ -113,11 +113,39 @@ ob_start();
                     </tbody>
                 </table>
                 <div class="invoice-totals">
+                    <?php
+                    $docTaxView = function_exists('billo_invoice_use_document_tax') && billo_invoice_use_document_tax($invoice);
+                    ?>
                     <div class="invoice-totals__row"><span>Subtotal</span><span><?= billo_e($currency) ?> <?= billo_e(number_format((float) ($invoice['subtotal'] ?? 0), 2)) ?></span></div>
-                    <?php if (!$hideTax): ?>
-                        <div class="invoice-totals__row"><span>Tax</span><span><?= billo_e($currency) ?> <?= billo_e(number_format((float) ($invoice['tax_total'] ?? 0), 2)) ?></span></div>
+                    <?php if ($docTaxView): ?>
+                        <?php if (!empty($invoice['apply_vat'])): ?>
+                            <div class="invoice-totals__row"><span>VAT<?php
+                                $vr = (float) ($invoice['vat_rate'] ?? 0);
+                                if ($vr > 0.00001) {
+                                    echo ' (' . billo_e(rtrim(rtrim(sprintf('%.2f', $vr), '0'), '.') ?: '0') . '%)';
+                                }
+                            ?></span><span><?= billo_e($currency) ?> <?= billo_e(number_format((float) ($invoice['vat_amount'] ?? $invoice['tax_total'] ?? 0), 2)) ?></span></div>
+                        <?php endif; ?>
+                        <div class="invoice-totals__row invoice-totals__row--total"><span>Total<?php
+                            if (!empty($invoice['apply_wht'])) {
+                                echo ' <span class="invoice-totals__sub">(before WHT)</span>';
+                            }
+                        ?></span><span><?= billo_e($currency) ?> <?= billo_e(number_format((float) ($invoice['total'] ?? 0), 2)) ?></span></div>
+                        <?php if (!empty($invoice['apply_wht'])): ?>
+                            <div class="invoice-totals__row"><span>Less: WHT<?php
+                                $whtLabel = trim((string) ($invoice['wht_type_name'] ?? ''));
+                                if ($whtLabel !== '') {
+                                    echo ' (' . billo_e($whtLabel) . ')';
+                                }
+                            ?></span><span>−<?= billo_e($currency) ?> <?= billo_e(number_format((float) ($invoice['wht_amount'] ?? 0), 2)) ?></span></div>
+                            <div class="invoice-totals__row invoice-totals__row--total invoice-totals__row--net"><span>Net payable</span><span><?= billo_e($currency) ?> <?= billo_e(number_format((float) ($invoice['net_payable'] ?? $invoice['total'] ?? 0), 2)) ?></span></div>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <?php if (!$hideTax): ?>
+                            <div class="invoice-totals__row"><span>Tax</span><span><?= billo_e($currency) ?> <?= billo_e(number_format((float) ($invoice['tax_total'] ?? 0), 2)) ?></span></div>
+                        <?php endif; ?>
+                        <div class="invoice-totals__row invoice-totals__row--total"><span>Total</span><span><?= billo_e($currency) ?> <?= billo_e(number_format((float) ($invoice['total'] ?? 0), 2)) ?></span></div>
                     <?php endif; ?>
-                    <div class="invoice-totals__row invoice-totals__row--total"><span>Total</span><span><?= billo_e($currency) ?> <?= billo_e(number_format((float) ($invoice['total'] ?? 0), 2)) ?></span></div>
                 </div>
             </div>
         </div>

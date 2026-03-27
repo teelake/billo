@@ -10,6 +10,8 @@ use App\Core\Request;
 use App\Core\Session;
 use App\Core\View;
 use App\Repositories\OrganizationRepository;
+use App\Repositories\OrganizationTaxRepository;
+use App\Repositories\TaxConfigRepository;
 use App\Services\NigerianBankListService;
 use App\Services\OrganizationLogoService;
 use App\Support\InvoiceTheme;
@@ -21,6 +23,8 @@ final class OrganizationController extends Controller
     public function __construct(
         private Request $request,
         private OrganizationRepository $organizations = new OrganizationRepository(),
+        private OrganizationTaxRepository $orgTax = new OrganizationTaxRepository(),
+        private TaxConfigRepository $taxConfigs = new TaxConfigRepository(),
     ) {
     }
 
@@ -33,8 +37,17 @@ final class OrganizationController extends Controller
             $this->redirect('/dashboard');
         }
 
+        $org['nrs_token_configured'] = !empty($org['nrs_bearer_token']);
+        unset($org['nrs_bearer_token']);
+
+        $this->orgTax->ensureDefaults($ctx['organization_id']);
+        $orgTaxRow = $this->orgTax->findByOrganization($ctx['organization_id']) ?? [];
+
         View::render('organization/edit', [
             'organization' => $org,
+            'organization_tax' => $orgTaxRow,
+            'wht_types' => $this->taxConfigs->listActiveByType('deductive'),
+            'platform_vat_rate' => $this->taxConfigs->defaultPlatformVatRatePercent(),
             'nigerian_banks' => NigerianBankListService::banks(),
             'user_name' => (string) Session::get('user_name', ''),
             'role' => $ctx['role'],
@@ -98,7 +111,26 @@ final class OrganizationController extends Controller
             }
             throw $e;
         }
-        Session::flash('success', 'Business details saved. They appear on printed invoices, PDFs, and emails.');
+
+        $taxPayload = $this->validatedOrganizationTaxSettings();
+        if (is_string($taxPayload)) {
+            Session::flash('error', $taxPayload);
+            $this->redirect('/organization');
+        }
+        $this->orgTax->ensureDefaults($orgId);
+        $this->orgTax->upsert($orgId, $taxPayload);
+
+        $nrsPayload = $this->validatedNrsPayload($orgId);
+        if (is_string($nrsPayload)) {
+            Session::flash('error', $nrsPayload);
+            $this->redirect('/organization');
+        }
+        $nrsOk = $this->organizations->updateNrsSettings($orgId, $nrsPayload);
+        $msg = 'Business details saved. They appear on printed invoices, PDFs, and emails.';
+        if (!$nrsOk) {
+            $msg .= ' NRS integration could not be saved—apply migration 015 if you use NRS.';
+        }
+        Session::flash('success', $msg);
         $this->redirect('/organization');
     }
 
@@ -308,5 +340,91 @@ final class OrganizationController extends Controller
         }
 
         return $v;
+    }
+
+    /**
+     * @return array{
+     *   enable_vat: int,
+     *   vat_rate: float,
+     *   enable_wht: int,
+     *   default_wht_id: ?int
+     * }|string
+     */
+    /**
+     * @return array{
+     *   nrs_enabled: int,
+     *   nrs_api_base_url: ?string,
+     *   nrs_bearer_token: ?string,
+     *   nrs_tenant_external_id: ?string
+     * }|string
+     */
+    private function validatedNrsPayload(int $organizationId): array|string
+    {
+        $org = $this->organizations->findById($organizationId) ?? [];
+        $enabled = isset($_POST['nrs_enabled']) && (string) $_POST['nrs_enabled'] === '1';
+        $urlRaw = trim((string) $this->request->input('nrs_api_base_url', ''));
+        $url = $urlRaw !== '' ? $urlRaw : null;
+        if ($url !== null && filter_var($url, FILTER_VALIDATE_URL) === false) {
+            return 'NRS API base URL must be a valid URL (e.g. https://api.example.com).';
+        }
+        if (strlen((string) $url) > 500) {
+            return 'NRS API base URL is too long.';
+        }
+
+        $tid = $this->trimOrNull($this->request->input('nrs_tenant_external_id', ''), 120);
+        $newTok = trim((string) $this->request->input('nrs_bearer_token', ''));
+        $clearTok = isset($_POST['nrs_clear_token']) && (string) $_POST['nrs_clear_token'] === '1';
+
+        $token = isset($org['nrs_bearer_token']) && is_string($org['nrs_bearer_token']) ? $org['nrs_bearer_token'] : null;
+        if ($clearTok) {
+            $token = null;
+        } elseif ($newTok !== '') {
+            if (strlen($newTok) > 2000) {
+                return 'Bearer token is too long (max 2000 characters).';
+            }
+            $token = $newTok;
+        }
+
+        if ($enabled && ($url === null || $url === '')) {
+            return 'Enter the NRS API base URL when sync is enabled, or turn off NRS sync.';
+        }
+
+        return [
+            'nrs_enabled' => $enabled ? 1 : 0,
+            'nrs_api_base_url' => $url,
+            'nrs_bearer_token' => $token,
+            'nrs_tenant_external_id' => $tid,
+        ];
+    }
+
+    private function validatedOrganizationTaxSettings(): array|string
+    {
+        $enableVat = isset($_POST['org_enable_vat']) && (string) $_POST['org_enable_vat'] === '1';
+        $enableWht = isset($_POST['org_enable_wht']) && (string) $_POST['org_enable_wht'] === '1';
+
+        $vr = trim((string) $this->request->input('org_vat_rate', ''));
+        $vatRate = 0.0;
+        if ($vr !== '' && is_numeric($vr)) {
+            $vatRate = (float) $vr;
+        }
+        if ($vatRate < 0 || $vatRate > 100) {
+            return 'Default VAT rate must be between 0 and 100 (use 0 to use the platform default on new invoices).';
+        }
+
+        $whtId = null;
+        $whtRaw = $this->request->input('org_default_wht_id', '');
+        if ($enableWht && is_numeric($whtRaw) && (int) $whtRaw > 0) {
+            $whtId = (int) $whtRaw;
+            if ($this->taxConfigs->findActiveDeductiveById($whtId) === null) {
+                return 'Choose a valid default WHT type, or turn off WHT for this business.';
+            }
+        }
+
+        return [
+            'enable_vat' => $enableVat ? 1 : 0,
+            'vat_rate' => $vatRate,
+            'enable_wht' => $enableWht ? 1 : 0,
+            'default_wht_id' => $whtId,
+        ];
     }
 }

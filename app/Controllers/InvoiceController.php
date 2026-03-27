@@ -12,8 +12,11 @@ use App\Core\View;
 use App\Repositories\ClientRepository;
 use App\Repositories\InvoiceRepository;
 use App\Repositories\OrganizationRepository;
+use App\Repositories\OrganizationTaxRepository;
+use App\Repositories\TaxConfigRepository;
 use App\Services\EmailNotifications;
 use App\Services\InvoicePdfService;
+use App\Services\NrsInvoiceSyncService;
 use App\Services\PaymentLinkService;
 use App\Services\Payments\PaymentGatewayFactory;
 
@@ -24,6 +27,8 @@ final class InvoiceController extends Controller
         private InvoiceRepository $invoices = new InvoiceRepository(),
         private ClientRepository $clients = new ClientRepository(),
         private OrganizationRepository $organizations = new OrganizationRepository(),
+        private OrganizationTaxRepository $orgTax = new OrganizationTaxRepository(),
+        private TaxConfigRepository $taxConfigs = new TaxConfigRepository(),
         private EmailNotifications $emailNotifications = new EmailNotifications(),
     ) {
     }
@@ -62,11 +67,14 @@ final class InvoiceController extends Controller
 
         $status = (string) ($invoice['status'] ?? '');
         $payOnlineUrl = '';
+        $payable = function_exists('billo_invoice_payable_amount')
+            ? \billo_invoice_payable_amount($invoice)
+            : (float) ($invoice['total'] ?? 0);
         if (
             PaymentGatewayFactory::invoicePayLinksAvailable()
             && ($invoice['invoice_kind'] ?? 'invoice') === 'invoice'
             && $status === 'sent'
-            && (float) ($invoice['total'] ?? 0) > 0
+            && $payable > 0
         ) {
             $payOnlineUrl = (new PaymentLinkService())->buildUrl($id, $ctx['organization_id']);
         }
@@ -96,6 +104,8 @@ final class InvoiceController extends Controller
 
         $clientList = $this->clients->listForOrganization($ctx['organization_id']);
         $orgRow = $this->organizations->findById($ctx['organization_id']) ?? [];
+        $this->orgTax->ensureDefaults($ctx['organization_id']);
+        $orgTaxRow = $this->orgTax->findByOrganization($ctx['organization_id']) ?? [];
 
         View::render('invoices/form', [
             'invoice' => null,
@@ -106,6 +116,8 @@ final class InvoiceController extends Controller
             'is_edit' => false,
             'is_credit_note' => false,
             'invoice_tax_enabled' => (int) ($orgRow['invoice_tax_enabled'] ?? 1) === 1,
+            'document_tax' => $this->documentTaxFormContext($ctx['organization_id'], null),
+            'org_tax_row' => $orgTaxRow,
             'user_name' => (string) Session::get('user_name', ''),
             'role' => $ctx['role'],
             'show_team_nav' => in_array($ctx['role'], ['owner', 'admin'], true),
@@ -124,10 +136,19 @@ final class InvoiceController extends Controller
             $this->redirect('/invoices/create');
         }
 
-        $parsed = $this->validatedInvoicePayload($ctx['organization_id'], false);
+        $parsed = $this->validatedInvoicePayload($ctx['organization_id'], false, null);
         if (is_string($parsed)) {
             Session::flash('error', $parsed);
             $this->redirect('/invoices/create');
+        }
+
+        $documentTax = null;
+        if (InvoiceRepository::supportsDocumentTax()) {
+            $documentTax = $this->resolveDocumentTaxPayload($ctx['organization_id']);
+            if (is_string($documentTax)) {
+                Session::flash('error', $documentTax);
+                $this->redirect('/invoices/create');
+            }
         }
 
         try {
@@ -139,7 +160,13 @@ final class InvoiceController extends Controller
                 $parsed['currency'],
                 $parsed['notes'],
                 $parsed['lines'],
+                'invoice',
+                null,
+                $documentTax,
             );
+        } catch (\InvalidArgumentException $e) {
+            Session::flash('error', $e->getMessage());
+            $this->redirect('/invoices/create');
         } catch (\Throwable) {
             Session::flash('error', 'Could not create invoice. Please try again.');
             $this->redirect('/invoices/create');
@@ -176,6 +203,8 @@ final class InvoiceController extends Controller
         $clientList = $this->clients->listForOrganization($ctx['organization_id']);
         $isCreditNote = ($invoice['invoice_kind'] ?? 'invoice') === 'credit_note';
         $orgRow = $this->organizations->findById($ctx['organization_id']) ?? [];
+        $this->orgTax->ensureDefaults($ctx['organization_id']);
+        $orgTaxRow = $this->orgTax->findByOrganization($ctx['organization_id']) ?? [];
 
         View::render('invoices/form', [
             'invoice' => $invoice,
@@ -184,6 +213,8 @@ final class InvoiceController extends Controller
             'is_edit' => true,
             'is_credit_note' => $isCreditNote,
             'invoice_tax_enabled' => (int) ($orgRow['invoice_tax_enabled'] ?? 1) === 1,
+            'document_tax' => $this->documentTaxFormContext($ctx['organization_id'], $invoice),
+            'org_tax_row' => $orgTaxRow,
             'user_name' => (string) Session::get('user_name', ''),
             'role' => $ctx['role'],
             'show_team_nav' => in_array($ctx['role'], ['owner', 'admin'], true),
@@ -216,10 +247,20 @@ final class InvoiceController extends Controller
         }
         $isCreditNote = ($existing['invoice_kind'] ?? 'invoice') === 'credit_note';
 
-        $parsed = $this->validatedInvoicePayload($ctx['organization_id'], $isCreditNote);
+        $parsed = $this->validatedInvoicePayload($ctx['organization_id'], $isCreditNote, $existing);
         if (is_string($parsed)) {
             Session::flash('error', $parsed);
             $this->redirect('/invoices/edit?id=' . $id);
+        }
+
+        $documentTax = null;
+        if (InvoiceRepository::supportsDocumentTax() && !$isCreditNote
+            && (($existing['tax_computation'] ?? 'line') === 'document')) {
+            $documentTax = $this->resolveDocumentTaxPayload($ctx['organization_id']);
+            if (is_string($documentTax)) {
+                Session::flash('error', $documentTax);
+                $this->redirect('/invoices/edit?id=' . $id);
+            }
         }
 
         try {
@@ -232,7 +273,11 @@ final class InvoiceController extends Controller
                 $parsed['currency'],
                 $parsed['notes'],
                 $parsed['lines'],
+                $documentTax,
             );
+        } catch (\InvalidArgumentException $e) {
+            Session::flash('error', $e->getMessage());
+            $this->redirect('/invoices/edit?id=' . $id);
         } catch (\Throwable) {
             Session::flash('error', 'Could not update invoice.');
             $this->redirect('/invoices/edit?id=' . $id);
@@ -300,6 +345,11 @@ final class InvoiceController extends Controller
         }
 
         if ($this->invoices->markSent($id, $ctx['organization_id'])) {
+            try {
+                (new NrsInvoiceSyncService())->syncSentInvoice($id, $ctx['organization_id']);
+            } catch (\Throwable $e) {
+                error_log('NRS sync after send: ' . $e->getMessage());
+            }
             Session::flash('success', 'Invoice marked as sent.');
         } else {
             Session::flash('error', 'Could not mark as sent. It must be a draft with a client.');
@@ -549,10 +599,22 @@ final class InvoiceController extends Controller
     /**
      * @return array{client_id:?int,issue_date:string,due_date:?string,currency:string,notes:?string,lines:list<array{description:string,quantity:float,unit_amount:float,tax_rate:float}>}|string
      */
-    private function validatedInvoicePayload(int $organizationId, bool $isCreditNote): array|string
+    /**
+     * @param array<string, mixed>|null $existingInvoice draft row when updating
+     */
+    private function validatedInvoicePayload(int $organizationId, bool $isCreditNote, ?array $existingInvoice): array|string
     {
         $org = $this->organizations->findById($organizationId) ?? [];
         $taxEnabled = (int) ($org['invoice_tax_enabled'] ?? 1) === 1;
+
+        $forceZeroLineTax = false;
+        if (!$isCreditNote && InvoiceRepository::supportsDocumentTax()) {
+            if ($existingInvoice === null) {
+                $forceZeroLineTax = true;
+            } elseif (($existingInvoice['tax_computation'] ?? 'line') === 'document') {
+                $forceZeroLineTax = true;
+            }
+        }
 
         $clientRaw = $this->request->input('client_id', '');
         $clientId = null;
@@ -598,7 +660,7 @@ final class InvoiceController extends Controller
 
         $notes = $this->trimOrNull($this->request->input('notes', ''), 65535);
 
-        $linesResult = $this->parsePostedLines($isCreditNote, $taxEnabled);
+        $linesResult = $this->parsePostedLines($isCreditNote, $taxEnabled, $forceZeroLineTax);
         if (is_string($linesResult)) {
             return $linesResult;
         }
@@ -616,7 +678,7 @@ final class InvoiceController extends Controller
     /**
      * @return list<array{description:string,quantity:float,unit_amount:float,tax_rate:float}>|string
      */
-    private function parsePostedLines(bool $isCreditNote, bool $taxEnabled): array|string
+    private function parsePostedLines(bool $isCreditNote, bool $taxEnabled, bool $forceZeroLineTax): array|string
     {
         $raw = $_POST['lines'] ?? null;
         if (!is_array($raw)) {
@@ -648,7 +710,9 @@ final class InvoiceController extends Controller
             $qty = (float) $qtyStr;
             $unit = (float) $unitStr;
             $tax = (float) $taxStr;
-            if (!$taxEnabled) {
+            if ($forceZeroLineTax) {
+                $tax = 0.0;
+            } elseif (!$taxEnabled) {
                 $tax = 0.0;
             }
 
@@ -662,7 +726,7 @@ final class InvoiceController extends Controller
             } elseif ($unit < 0) {
                 return 'Unit price cannot be negative on a standard invoice.';
             }
-            if ($taxEnabled && ($tax < 0 || $tax > 100)) {
+            if (!$forceZeroLineTax && $taxEnabled && ($tax < 0 || $tax > 100)) {
                 return 'Tax rate must be between 0 and 100.';
             }
 
@@ -702,5 +766,68 @@ final class InvoiceController extends Controller
         }
 
         return $v;
+    }
+
+    /**
+     * @return array{supported: bool, wht_types: list<array<string, mixed>>, platform_vat_rate: float}
+     */
+    private function documentTaxFormContext(int $organizationId, ?array $invoice): array
+    {
+        unset($organizationId, $invoice);
+
+        return [
+            'supported' => InvoiceRepository::supportsDocumentTax(),
+            'wht_types' => $this->taxConfigs->listActiveByType('deductive'),
+            'platform_vat_rate' => $this->taxConfigs->defaultPlatformVatRatePercent(),
+        ];
+    }
+
+    /**
+     * @return array{apply_vat: bool, vat_rate: float, apply_wht: bool, wht_id: ?int, wht_rate: float}|string
+     */
+    private function resolveDocumentTaxPayload(int $organizationId): array|string
+    {
+        $this->orgTax->ensureDefaults($organizationId);
+        $orgTax = $this->orgTax->findByOrganization($organizationId) ?? [];
+
+        $applyVat = isset($_POST['apply_vat']) && (string) $_POST['apply_vat'] === '1';
+        $applyWht = isset($_POST['apply_wht']) && (string) $_POST['apply_wht'] === '1';
+
+        $vatRate = 0.0;
+        if ($applyVat) {
+            $vrRaw = trim((string) $this->request->input('vat_rate', ''));
+            if ($vrRaw !== '' && is_numeric($vrRaw)) {
+                $vatRate = (float) $vrRaw;
+            } else {
+                $orgVat = (float) ($orgTax['vat_rate'] ?? 0);
+                $vatRate = $orgVat > 0.00001 ? $orgVat : $this->taxConfigs->defaultPlatformVatRatePercent();
+            }
+            if ($vatRate < 0 || $vatRate > 100) {
+                return 'VAT rate must be between 0 and 100.';
+            }
+        }
+
+        $whtId = null;
+        $whtRate = 0.0;
+        if ($applyWht) {
+            $whtRaw = $this->request->input('wht_id', '');
+            if (!is_numeric($whtRaw) || (int) $whtRaw <= 0) {
+                return 'Select a withholding tax type when WHT applies.';
+            }
+            $whtId = (int) $whtRaw;
+            $cfg = $this->taxConfigs->findActiveDeductiveById($whtId);
+            if ($cfg === null) {
+                return 'Invalid or inactive WHT type.';
+            }
+            $whtRate = (float) ($cfg['rate'] ?? 0);
+        }
+
+        return [
+            'apply_vat' => $applyVat,
+            'vat_rate' => $vatRate,
+            'apply_wht' => $applyWht,
+            'wht_id' => $whtId,
+            'wht_rate' => $whtRate,
+        ];
     }
 }

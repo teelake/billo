@@ -33,7 +33,9 @@ final class StripeGateway implements PaymentGatewayInterface
 
         $invoiceId = (int) ($invoice['id'] ?? 0);
         $currency = strtolower((string) ($invoice['currency'] ?? 'ngn'));
-        $total = (float) ($invoice['total'] ?? 0);
+        $total = function_exists('billo_invoice_payable_amount')
+            ? \billo_invoice_payable_amount($invoice)
+            : (float) ($invoice['total'] ?? 0);
         $num = (string) ($invoice['invoice_number'] ?? 'Invoice');
 
         $unitAmount = (int) round($total * 100);

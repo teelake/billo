@@ -2049,6 +2049,17 @@ select.input {
     padding: 0.25rem 0;
     color: var(--color-muted);
 }
+.invoice-totals__sub {
+    font-weight: 400;
+    font-size: 0.85em;
+    color: var(--color-muted, #64748b);
+}
+.invoice-totals__row--net {
+    margin-top: 0.25rem;
+    padding-top: 0.5rem;
+    border-top: 2px solid var(--color-border, #e2e8f0);
+    font-size: 1.05rem;
+}
 .invoice-totals__row--total {
     margin-top: 0.35rem;
     padding-top: 0.5rem;
@@ -2892,6 +2903,9 @@ select.input {
     flex-direction: column;
     gap: 1.25rem;
     margin-bottom: 2rem;
+}
+.config-form > .org-settings-tabs {
+    max-width: 100%;
 }
 .config-form__section {
     margin: 0;

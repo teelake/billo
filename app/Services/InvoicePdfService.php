@@ -170,14 +170,43 @@ final class InvoicePdfService
             $creditRefHtml = '<div style="font-size:10px;color:' . $muted . ';margin-top:6px">Applies to invoice: <strong>' . $h($creditRef) . '</strong></div>';
         }
 
+        $docTaxPdf = function_exists('billo_invoice_use_document_tax') && billo_invoice_use_document_tax($invoice);
+
         $totalsRows = '<tr><td style="color:' . $muted . ';padding:4px 0">Subtotal</td><td style="text-align:right;padding:4px 0">'
             . $h($currency . ' ' . number_format((float) ($invoice['subtotal'] ?? 0), 2)) . '</td></tr>';
-        if (!$hideTax) {
-            $totalsRows .= '<tr><td style="color:' . $muted . ';padding:4px 0">Tax</td><td style="text-align:right;padding:4px 0">'
-                . $h($currency . ' ' . number_format((float) ($invoice['tax_total'] ?? 0), 2)) . '</td></tr>';
+
+        if ($docTaxPdf) {
+            if (!empty($invoice['apply_vat'])) {
+                $vr = (float) ($invoice['vat_rate'] ?? 0);
+                $vLabel = 'VAT';
+                if ($vr > 0.00001) {
+                    $vLabel .= ' (' . $h(rtrim(rtrim(sprintf('%.2f', $vr), '0'), '.') ?: '0') . '%)';
+                }
+                $totalsRows .= '<tr><td style="color:' . $muted . ';padding:4px 0">' . $vLabel . '</td><td style="text-align:right;padding:4px 0">'
+                    . $h($currency . ' ' . number_format((float) ($invoice['vat_amount'] ?? $invoice['tax_total'] ?? 0), 2)) . '</td></tr>';
+            }
+            $totalLabel = 'Total';
+            if (!empty($invoice['apply_wht'])) {
+                $totalLabel .= ' (before WHT)';
+            }
+            $totalsRows .= '<tr><td style="font-weight:700;color:' . $primary . ';padding:8px 0 4px;border-top:1px solid ' . $accent . '">' . $h($totalLabel) . '</td><td style="text-align:right;font-weight:700;color:' . $primary . ';padding:8px 0 4px;border-top:1px solid ' . $accent . '">'
+                . $h($currency . ' ' . number_format((float) ($invoice['total'] ?? 0), 2)) . '</td></tr>';
+            if (!empty($invoice['apply_wht'])) {
+                $whtName = trim((string) ($invoice['wht_type_name'] ?? ''));
+                $whtLab = 'Less: WHT' . ($whtName !== '' ? ' (' . $h($whtName) . ')' : '');
+                $totalsRows .= '<tr><td style="color:' . $muted . ';padding:4px 0">' . $whtLab . '</td><td style="text-align:right;padding:4px 0">'
+                    . $h('−' . $currency . ' ' . number_format((float) ($invoice['wht_amount'] ?? 0), 2)) . '</td></tr>';
+                $totalsRows .= '<tr><td style="font-weight:700;color:' . $primary . ';padding:10px 0 4px;border-top:2px solid ' . $accent . '">Net payable</td><td style="text-align:right;font-weight:700;color:' . $primary . ';padding:10px 0 4px;border-top:2px solid ' . $accent . '">'
+                    . $h($currency . ' ' . number_format((float) ($invoice['net_payable'] ?? $invoice['total'] ?? 0), 2)) . '</td></tr>';
+            }
+        } else {
+            if (!$hideTax) {
+                $totalsRows .= '<tr><td style="color:' . $muted . ';padding:4px 0">Tax</td><td style="text-align:right;padding:4px 0">'
+                    . $h($currency . ' ' . number_format((float) ($invoice['tax_total'] ?? 0), 2)) . '</td></tr>';
+            }
+            $totalsRows .= '<tr><td style="font-weight:700;color:' . $primary . ';padding:8px 0 4px;border-top:1px solid ' . $accent . '">Total</td><td style="text-align:right;font-weight:700;color:' . $primary . ';padding:8px 0 4px;border-top:1px solid ' . $accent . '">'
+                . $h($currency . ' ' . number_format((float) ($invoice['total'] ?? 0), 2)) . '</td></tr>';
         }
-        $totalsRows .= '<tr><td style="font-weight:700;color:' . $primary . ';padding:8px 0 4px;border-top:1px solid ' . $accent . '">Total</td><td style="text-align:right;font-weight:700;color:' . $primary . ';padding:8px 0 4px;border-top:1px solid ' . $accent . '">'
-            . $h($currency . ' ' . number_format((float) ($invoice['total'] ?? 0), 2)) . '</td></tr>';
 
         return '<!DOCTYPE html><html><head><meta charset="UTF-8">'
             . '<style>body{font-family:DejaVu Sans,sans-serif;font-size:12px;color:#0f172a;margin:24px;background:' . $h($T['sheet_bg']) . '}</style></head><body>'

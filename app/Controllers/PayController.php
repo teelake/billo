@@ -9,6 +9,8 @@ use App\Core\View;
 use App\Repositories\InvoiceRepository;
 use App\Services\PaymentLinkService;
 use App\Services\Payments\PaymentGatewayFactory;
+use App\Services\Payments\PaystackGateway;
+use App\Services\SubscriptionPaymentCompletion;
 
 final class PayController extends Controller
 {
@@ -46,7 +48,10 @@ final class PayController extends Controller
             View::render('pay/error', ['message' => 'This invoice cannot be paid online.']);
             return;
         }
-        if ((float) ($invoice['total'] ?? 0) <= 0) {
+        $payable = function_exists('billo_invoice_payable_amount')
+            ? \billo_invoice_payable_amount($invoice)
+            : (float) ($invoice['total'] ?? 0);
+        if ($payable <= 0) {
             View::render('pay/error', ['message' => 'Nothing to pay on this invoice.']);
             return;
         }
@@ -79,6 +84,9 @@ final class PayController extends Controller
                 if (is_string($val)) {
                     $query[$key] = $val;
                 }
+            }
+            if ($gateway instanceof PaystackGateway) {
+                (new SubscriptionPaymentCompletion())->tryCompleteFromPaystackReturn($gateway, $query);
             }
             $done = $gateway->completeFromReturn($query);
             if ($done !== null) {

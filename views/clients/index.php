@@ -48,11 +48,16 @@ ob_start();
                 <p class="welcome-card__text">No clients yet.<?= $can_manage ? ' Add your first customer to get ready for invoicing.' : '' ?></p>
             </div>
         <?php else: ?>
-            <div class="table-wrap welcome-card" style="padding:0;border:none;box-shadow:none;background:transparent">
-                <div class="welcome-card" style="padding:0;overflow:hidden">
+            <div class="table-wrap welcome-card" data-billo-filter-table style="padding:0;border:none;box-shadow:none;background:transparent">
+                <div class="welcome-card" style="padding:0.75rem 1rem 0;margin:0;border:none;box-shadow:none">
+                    <label class="label" for="clients-table-filter" style="font-size:0.85rem">Filter rows</label>
+                    <input type="search" id="clients-table-filter" class="input input--sm" data-billo-filter-input placeholder="Search ID, name, company, email…" autocomplete="off" style="max-width:24rem">
+                </div>
+                <div class="welcome-card" style="padding:0;overflow:hidden;margin-top:0.5rem">
                     <table class="data-table data-table--comfortable">
                         <thead>
                         <tr>
+                            <th class="num">ID</th>
                             <th>Name</th>
                             <th>Company</th>
                             <th>Email</th>
@@ -65,8 +70,19 @@ ob_start();
                         </thead>
                         <tbody>
                         <?php foreach ($clients as $c): ?>
-                            <tr>
-                                <td><strong><?= billo_e((string) ($c['name'] ?? '')) ?></strong></td>
+                            <?php
+                            $cid = (int) ($c['id'] ?? 0);
+                            $cname = (string) ($c['name'] ?? '');
+                            $comp = isset($c['company_name']) ? (string) $c['company_name'] : '';
+                            $em = isset($c['email']) ? (string) $c['email'] : '';
+                            $ph = isset($c['phone']) ? (string) $c['phone'] : '';
+                            $locBits = array_filter([$c['city'] ?? null, $c['state'] ?? null, $c['country'] ?? null]);
+                            $loc = $locBits !== [] ? implode(' ', $locBits) : '';
+                            $searchBlob = strtolower(implode(' ', array_filter([(string) $cid, $cname, $comp, $em, $ph, $loc])));
+                            ?>
+                            <tr data-billo-search="<?= billo_e($searchBlob) ?>">
+                                <td class="num"><?= $cid ?></td>
+                                <td><strong><?= billo_e($cname) ?></strong></td>
                                 <td><?php
                                     $cn = isset($c['company_name']) && $c['company_name'] !== '' ? (string) $c['company_name'] : '—';
                                     echo billo_e($cn);

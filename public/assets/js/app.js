@@ -30,7 +30,7 @@
     if (!tbody || !addBtn) {
         return;
     }
-    const taxOn = tbody.dataset.taxEnabled !== "0";
+    const taxOn = tbody.dataset.taxEnabled === "1";
     const tplId = taxOn ? "invoice-line-empty-row" : "invoice-line-empty-row-no-tax";
     const tpl = document.getElementById(tplId);
     if (!tpl || !(tpl instanceof HTMLTemplateElement)) {
@@ -73,6 +73,87 @@
     });
 
     renumber();
+})();
+
+/** Long forms: tab panels (invoice form, platform configuration, etc.) */
+(function () {
+    document.querySelectorAll("[data-billo-form-tabs]").forEach((root) => {
+        const tabs = root.querySelectorAll("[data-billo-tab]");
+        const panels = root.querySelectorAll("[data-billo-panel]");
+        if (!tabs.length || !panels.length) {
+            return;
+        }
+        const defaultId =
+            root.getAttribute("data-billo-default-tab") ||
+            tabs[0].getAttribute("data-billo-tab") ||
+            "";
+        const valid = new Set(
+            Array.from(tabs).map((b) => b.getAttribute("data-billo-tab") || ""),
+        );
+
+        const show = (id) => {
+            let next = id;
+            if (!valid.has(next)) {
+                next = defaultId;
+            }
+            tabs.forEach((btn) => {
+                const on = (btn.getAttribute("data-billo-tab") || "") === next;
+                btn.setAttribute("aria-selected", on ? "true" : "false");
+                btn.tabIndex = on ? 0 : -1;
+            });
+            panels.forEach((p) => {
+                const on = (p.getAttribute("data-billo-panel") || "") === next;
+                if (on) {
+                    p.removeAttribute("hidden");
+                } else {
+                    p.setAttribute("hidden", "");
+                }
+            });
+            try {
+                const path = window.location.pathname || "";
+                const search = window.location.search || "";
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState(null, "", path + search + "#" + next);
+                }
+            } catch (_e) {
+                /* ignore */
+            }
+        };
+
+        tabs.forEach((btn) => {
+            btn.addEventListener("click", () => {
+                show(btn.getAttribute("data-billo-tab") || defaultId);
+            });
+        });
+        const hash = (window.location.hash || "").replace(/^#/, "").toLowerCase();
+        if (valid.has(hash)) {
+            show(hash);
+        } else {
+            show(defaultId);
+        }
+    });
+})();
+
+/** Client-side table filter: wrap table in [data-billo-filter-table], add input [data-billo-filter-input] */
+(function () {
+    document.querySelectorAll("[data-billo-filter-table]").forEach((wrap) => {
+        const input = wrap.querySelector("[data-billo-filter-input]");
+        const table = wrap.querySelector("table");
+        if (!input || !table || !(input instanceof HTMLInputElement)) {
+            return;
+        }
+        const run = () => {
+            const q = input.value.trim().toLowerCase();
+            table.querySelectorAll("tbody tr").forEach((tr) => {
+                const blob =
+                    tr.getAttribute("data-billo-search") ||
+                    (tr.textContent || "").replace(/\s+/g, " ").trim();
+                tr.hidden = q !== "" && !blob.toLowerCase().includes(q);
+            });
+        };
+        input.addEventListener("input", run);
+        run();
+    });
 })();
 
 /** Searchable Nigerian bank field (business settings) */

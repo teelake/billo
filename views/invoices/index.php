@@ -46,10 +46,15 @@ ob_start();
                 <p class="welcome-card__text">No invoices yet.<?= $can_manage ? ' Create a draft and add line items when you’re ready.' : '' ?></p>
             </div>
         <?php else: ?>
-            <div class="welcome-card" style="padding:0;overflow:hidden">
+            <div class="welcome-card" data-billo-filter-table style="padding:0;overflow:hidden">
+                <div style="padding:0.75rem 1rem;border-bottom:1px solid var(--color-border, #e2e8f0)">
+                    <label class="label" for="invoices-table-filter" style="font-size:0.85rem">Filter rows</label>
+                    <input type="search" id="invoices-table-filter" class="input input--sm" data-billo-filter-input placeholder="Search ID, number, client, status…" autocomplete="off" style="max-width:24rem">
+                </div>
                 <table class="data-table data-table--comfortable">
                     <thead>
                     <tr>
+                        <th class="num">ID</th>
                         <th>Number</th>
                         <th>Type</th>
                         <th>Client</th>
@@ -62,6 +67,7 @@ ob_start();
                     <tbody>
                     <?php foreach ($invoices as $inv): ?>
                         <?php
+                        $iid = (int) ($inv['id'] ?? 0);
                         $status = (string) ($inv['status'] ?? '');
                         $cid = (int) ($inv['client_id'] ?? 0);
                         $clientLabel = '—';
@@ -74,9 +80,20 @@ ob_start();
                         $total = $inv['total'] ?? '0';
                         $ik = (string) ($inv['invoice_kind'] ?? 'invoice');
                         $typeLabel = $ik === 'credit_note' ? 'Credit' : 'Invoice';
+                        $invNo = (string) ($inv['invoice_number'] ?? '');
+                        $issueD = (string) ($inv['issue_date'] ?? '');
+                        $searchBlob = strtolower(implode(' ', array_filter([
+                            (string) $iid,
+                            $invNo,
+                            $typeLabel,
+                            $clientLabel,
+                            $status,
+                            $issueD,
+                        ])));
                         ?>
-                        <tr>
-                            <td><strong><?= billo_e((string) ($inv['invoice_number'] ?? '')) ?></strong></td>
+                        <tr data-billo-search="<?= billo_e($searchBlob) ?>">
+                            <td class="num"><?= $iid ?></td>
+                            <td><strong><?= billo_e($invNo) ?></strong></td>
                             <td><span class="status-pill status-pill--<?= $ik === 'credit_note' ? 'draft' : 'sent' ?>"><?= billo_e($typeLabel) ?></span></td>
                             <td><?= billo_e($clientLabel) ?></td>
                             <td><span class="status-pill status-pill--<?= billo_e($status) ?>"><?= billo_e($status) ?></span></td>
