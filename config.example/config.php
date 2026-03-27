@@ -19,6 +19,11 @@ return [
          * Set to "" if the document root is this app's public/ folder at domain root.
          */
         'base_path' => '/billo',
+        /**
+         * Force static asset prefix. Usually leave "" — billo_asset() detects DocumentRoot.
+         * If CSS/JS 404, set "public" when the web root is the project folder (not /public).
+         */
+        'assets_url_segment' => '',
     ],
     'db' => [
         'host' => '127.0.0.1',

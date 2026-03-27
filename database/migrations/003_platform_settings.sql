@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS platform_settings (
 -- INSERT INTO platform_settings (setting_key, setting_value) VALUES
 --     ('app.public_url', 'https://www.webspace.ng'),
 --     ('app.base_path', '/billo'),
+--     ('app.assets_url_segment', 'public'),
 --     ('brand.name', 'billo'),
 --     ('brand.tagline', 'FIRS-ready invoicing for Nigeria')
 -- ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);

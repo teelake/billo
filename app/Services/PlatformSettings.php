@@ -49,6 +49,9 @@ final class PlatformSettings
         if ($v = $pick('app.base_path')) {
             $patch['app']['base_path'] = $v === '/' ? '' : rtrim($v, '/');
         }
+        if ($v = $pick('app.assets_url_segment')) {
+            $patch['app']['assets_url_segment'] = trim($v, '/');
+        }
         if ($v = $pick('brand.name')) {
             $patch['app']['name'] = $v;
         }

@@ -16,9 +16,38 @@ function billo_url(string $path = '/'): string
     return $base . $path;
 }
 
+/**
+ * Static URL for files under public/assets. Handles both hosting layouts:
+ * - DocumentRoot = .../public  → /{base}/assets/...
+ * - DocumentRoot = project root → /{base}/public/assets/...
+ *
+ * Override with config app.assets_url_segment (e.g. "public" or "").
+ */
 function billo_asset(string $path): string
 {
-    return billo_url('assets/' . ltrim($path, '/'));
+    $path = ltrim(str_replace('\\', '/', $path), '/');
+    $relative = 'assets/' . $path;
+
+    $forced = trim((string) Config::get('app.assets_url_segment', ''), '/');
+    if ($forced !== '') {
+        return billo_url($forced . '/' . $relative);
+    }
+
+    if (defined('BILLO_ROOT') && PHP_SAPI !== 'cli-server') {
+        $docRaw = $_SERVER['DOCUMENT_ROOT'] ?? '';
+        $doc = $docRaw !== '' ? (realpath(rtrim($docRaw, '/\\')) ?: '') : '';
+        $pub = realpath(BILLO_ROOT . DIRECTORY_SEPARATOR . 'public') ?: '';
+
+        if ($doc !== '' && $pub !== '' && $doc === $pub) {
+            return billo_url($relative);
+        }
+
+        if ($pub !== '' && is_file($pub . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative))) {
+            return billo_url('public/' . $relative);
+        }
+    }
+
+    return billo_url($relative);
 }
 
 function billo_e(?string $value): string

@@ -15,6 +15,10 @@ use App\Core\Session;
 use App\Services\PlatformSettings;
 
 $root = dirname(__DIR__);
+if (!defined('BILLO_ROOT')) {
+    define('BILLO_ROOT', $root);
+}
+
 require $root . '/app/Autoloader.php';
 Autoloader::register($root . '/app');
 
