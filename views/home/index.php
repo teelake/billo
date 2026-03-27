@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 
-$title = 'billo — FIRS-ready invoicing for Nigeria';
+$title = 'billo — NRS-compliant invoice software for Nigeria';
 ob_start();
 ?>
 <section class="hero">
     <div class="container hero__inner">
         <div class="hero__copy">
             <p class="eyebrow">Nigeria · SMEs · Enterprises</p>
-            <h1 class="hero__title">Invoicing that stays on the right side of <span class="text-gradient">FIRS</span>.</h1>
+            <h1 class="hero__title"><span class="text-gradient">NRS-compliant</span> invoice software</h1>
             <p class="hero__subtitle">
                 Create compliant invoices, get paid faster, and give your brand a premium edge—whether you’re a solo freelancer or a growing company.
             </p>
@@ -70,7 +70,7 @@ ob_start();
         <div>
             <h2 class="section__title">Compliance-first, optional by design</h2>
             <p class="section__lead">
-                billo is positioned for FIRS-aligned operations. Not everyone needs full tax mode on day one—toggle what applies when your business is ready.
+                billo is positioned for NRS-aligned invoicing. Not everyone needs full tax mode on day one—toggle what applies when your business is ready.
             </p>
             <ul class="checklist">
                 <li>Nigeria-focused workflows and copy</li>

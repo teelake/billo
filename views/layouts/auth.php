@@ -6,7 +6,7 @@ $pageTitle = $title ?? billo_brand_name();
 $authTagline = billo_brand_tagline();
 $authLead = $authTagline !== ''
     ? $authTagline
-    : 'FIRS-ready invoicing for Nigerian businesses—without the spreadsheet.';
+    : 'NRS-ready invoicing for Nigerian businesses—without the spreadsheet.';
 ?>
 <!DOCTYPE html>
 <html lang="en">

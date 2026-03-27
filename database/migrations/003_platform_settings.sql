@@ -15,5 +15,5 @@ CREATE TABLE IF NOT EXISTS platform_settings (
 --     ('app.base_path', '/billo'),
 --     ('app.assets_url_segment', 'public'),
 --     ('brand.name', 'billo'),
---     ('brand.tagline', 'FIRS-ready invoicing for Nigeria')
+--     ('brand.tagline', 'NRS-compliant invoice software for Nigeria')
 -- ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);

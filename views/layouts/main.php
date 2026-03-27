@@ -7,7 +7,7 @@ $bodyClass = $bodyClass ?? '';
 $brandTagline = billo_brand_tagline();
 $metaDescription = $brandTagline !== ''
     ? $brandTagline
-    : 'FIRS-aligned invoicing for Nigerian freelancers and businesses. Simple to use, built for compliance and growth.';
+    : 'NRS-aligned invoicing for Nigerian freelancers and businesses. Simple to use, built for compliance and growth.';
 ?>
 <!DOCTYPE html>
 <html lang="en">
