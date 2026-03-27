@@ -62,18 +62,32 @@ final class PlatformReportsRepository
         return str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $q);
     }
 
-    public function countOrganizations(string $q): int
+    public function countOrganizations(string $q, ?string $createdFrom = null, ?string $createdTo = null): int
     {
         try {
             $pdo = Database::pdo();
+            $bind = [];
             if (trim($q) === '') {
-                return (int) $pdo->query('SELECT COUNT(*) FROM organizations')->fetchColumn();
+                $sql = 'SELECT COUNT(*) FROM organizations WHERE 1=1';
+            } else {
+                $like = '%' . $this->likeFragment($q) . '%';
+                $sql = 'SELECT COUNT(*) FROM organizations WHERE (name LIKE :l ESCAPE \'\\\\\' OR slug LIKE :l2 ESCAPE \'\\\\\')';
+                $bind['l'] = $like;
+                $bind['l2'] = $like;
             }
-            $like = '%' . $this->likeFragment($q) . '%';
-            $st = $pdo->prepare(
-                'SELECT COUNT(*) FROM organizations WHERE name LIKE :l ESCAPE \'\\\\\' OR slug LIKE :l2 ESCAPE \'\\\\\''
-            );
-            $st->execute(['l' => $like, 'l2' => $like]);
+            if ($createdFrom !== null) {
+                $sql .= ' AND DATE(created_at) >= :ocf';
+                $bind['ocf'] = $createdFrom;
+            }
+            if ($createdTo !== null) {
+                $sql .= ' AND DATE(created_at) <= :oct';
+                $bind['oct'] = $createdTo;
+            }
+            if ($bind === []) {
+                return (int) $pdo->query($sql)->fetchColumn();
+            }
+            $st = $pdo->prepare($sql);
+            $st->execute($bind);
 
             return (int) $st->fetchColumn();
         } catch (\PDOException) {
@@ -84,33 +98,39 @@ final class PlatformReportsRepository
     /**
      * @return list<array{id:int,name:string,slug:string,created_at:string}>
      */
-    public function listOrganizations(int $page, int $perPage, string $q): array
+    public function listOrganizations(int $page, int $perPage, string $q, ?string $createdFrom = null, ?string $createdTo = null): array
     {
         $offset = ($this->clampPage($page) - 1) * $this->clampPerPage($perPage);
         $perPage = $this->clampPerPage($perPage);
         $out = [];
         try {
             $pdo = Database::pdo();
+            $bind = [];
             if (trim($q) === '') {
-                $st = $pdo->prepare(
-                    'SELECT id, name, slug, created_at FROM organizations ORDER BY id DESC LIMIT :lim OFFSET :off'
-                );
-                $st->bindValue('lim', $perPage, PDO::PARAM_INT);
-                $st->bindValue('off', $offset, PDO::PARAM_INT);
-                $st->execute();
+                $sql = 'SELECT id, name, slug, created_at FROM organizations WHERE 1=1';
             } else {
                 $like = '%' . $this->likeFragment($q) . '%';
-                $st = $pdo->prepare(
-                    'SELECT id, name, slug, created_at FROM organizations
-                     WHERE name LIKE :l ESCAPE \'\\\\\' OR slug LIKE :l2 ESCAPE \'\\\\\'
-                     ORDER BY id DESC LIMIT :lim OFFSET :off'
-                );
-                $st->bindValue('l', $like);
-                $st->bindValue('l2', $like);
-                $st->bindValue('lim', $perPage, PDO::PARAM_INT);
-                $st->bindValue('off', $offset, PDO::PARAM_INT);
-                $st->execute();
+                $sql = 'SELECT id, name, slug, created_at FROM organizations
+                     WHERE name LIKE :l ESCAPE \'\\\\\' OR slug LIKE :l2 ESCAPE \'\\\\\'';
+                $bind['l'] = $like;
+                $bind['l2'] = $like;
             }
+            if ($createdFrom !== null) {
+                $sql .= ' AND DATE(created_at) >= :ocf';
+                $bind['ocf'] = $createdFrom;
+            }
+            if ($createdTo !== null) {
+                $sql .= ' AND DATE(created_at) <= :oct';
+                $bind['oct'] = $createdTo;
+            }
+            $sql .= ' ORDER BY id DESC LIMIT :lim OFFSET :off';
+            $st = $pdo->prepare($sql);
+            foreach ($bind as $k => $v) {
+                $st->bindValue($k, $v);
+            }
+            $st->bindValue('lim', $perPage, PDO::PARAM_INT);
+            $st->bindValue('off', $offset, PDO::PARAM_INT);
+            $st->execute();
             while ($row = $st->fetch(PDO::FETCH_ASSOC)) {
                 $out[] = [
                     'id' => (int) $row['id'],
@@ -130,6 +150,7 @@ final class PlatformReportsRepository
         int $organizationId,
         ?string $dateFrom,
         ?string $dateTo,
+        string $invoiceNumberQ = '',
     ): int {
         try {
             $pdo = Database::pdo();
@@ -151,6 +172,10 @@ final class PlatformReportsRepository
                 $sql .= ' AND i.issue_date <= :dt';
                 $bind['dt'] = $dateTo;
             }
+            if (trim($invoiceNumberQ) !== '') {
+                $sql .= ' AND i.invoice_number LIKE :invq ESCAPE \'\\\\\'';
+                $bind['invq'] = '%' . $this->likeFragment($invoiceNumberQ) . '%';
+            }
             $st = $pdo->prepare($sql);
             $st->execute($bind);
 
@@ -170,6 +195,7 @@ final class PlatformReportsRepository
         int $organizationId,
         ?string $dateFrom,
         ?string $dateTo,
+        string $invoiceNumberQ = '',
     ): array {
         $page = $this->clampPage($page);
         $perPage = $this->clampPerPage($perPage);
@@ -198,6 +224,10 @@ final class PlatformReportsRepository
             if ($dateTo !== null) {
                 $sql .= ' AND i.issue_date <= :dt';
                 $bind['dt'] = $dateTo;
+            }
+            if (trim($invoiceNumberQ) !== '') {
+                $sql .= ' AND i.invoice_number LIKE :invq ESCAPE \'\\\\\'';
+                $bind['invq'] = '%' . $this->likeFragment($invoiceNumberQ) . '%';
             }
             $sql .= ' ORDER BY i.id DESC LIMIT :lim OFFSET :off';
             $st = $pdo->prepare($sql);
@@ -226,18 +256,32 @@ final class PlatformReportsRepository
         return $out;
     }
 
-    public function countUsers(string $q): int
+    public function countUsers(string $q, ?string $createdFrom = null, ?string $createdTo = null): int
     {
         try {
             $pdo = Database::pdo();
+            $bind = [];
             if (trim($q) === '') {
-                return (int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
+                $sql = 'SELECT COUNT(*) FROM users WHERE 1=1';
+            } else {
+                $like = '%' . $this->likeFragment($q) . '%';
+                $sql = 'SELECT COUNT(*) FROM users WHERE email LIKE :l ESCAPE \'\\\\\' OR name LIKE :l2 ESCAPE \'\\\\\'';
+                $bind['l'] = $like;
+                $bind['l2'] = $like;
             }
-            $like = '%' . $this->likeFragment($q) . '%';
-            $st = $pdo->prepare(
-                'SELECT COUNT(*) FROM users WHERE email LIKE :l ESCAPE \'\\\\\' OR name LIKE :l2 ESCAPE \'\\\\\''
-            );
-            $st->execute(['l' => $like, 'l2' => $like]);
+            if ($createdFrom !== null) {
+                $sql .= ' AND DATE(created_at) >= :ucf';
+                $bind['ucf'] = $createdFrom;
+            }
+            if ($createdTo !== null) {
+                $sql .= ' AND DATE(created_at) <= :uct';
+                $bind['uct'] = $createdTo;
+            }
+            if ($bind === []) {
+                return (int) $pdo->query($sql)->fetchColumn();
+            }
+            $st = $pdo->prepare($sql);
+            $st->execute($bind);
 
             return (int) $st->fetchColumn();
         } catch (\PDOException) {
@@ -248,7 +292,7 @@ final class PlatformReportsRepository
     /**
      * @return list<array{id:int,email:string,name:string,platform_operator:int,created_at:string}>
      */
-    public function listUsers(int $page, int $perPage, string $q): array
+    public function listUsers(int $page, int $perPage, string $q, ?string $createdFrom = null, ?string $createdTo = null): array
     {
         $page = $this->clampPage($page);
         $perPage = $this->clampPerPage($perPage);
@@ -261,23 +305,31 @@ final class PlatformReportsRepository
                 AND (g.expires_at IS NULL OR g.expires_at > CURRENT_TIMESTAMP)';
         try {
             $pdo = Database::pdo();
+            $bind = [];
             if (trim($q) === '') {
-                $st = $pdo->prepare($baseSql . ' ORDER BY u.id DESC LIMIT :lim OFFSET :off');
-                $st->bindValue('lim', $perPage, PDO::PARAM_INT);
-                $st->bindValue('off', $offset, PDO::PARAM_INT);
-                $st->execute();
+                $sql = $baseSql . ' WHERE 1=1';
             } else {
                 $like = '%' . $this->likeFragment($q) . '%';
-                $st = $pdo->prepare(
-                    $baseSql . ' WHERE u.email LIKE :l ESCAPE \'\\\\\' OR u.name LIKE :l2 ESCAPE \'\\\\\'
-                     ORDER BY u.id DESC LIMIT :lim OFFSET :off'
-                );
-                $st->bindValue('l', $like);
-                $st->bindValue('l2', $like);
-                $st->bindValue('lim', $perPage, PDO::PARAM_INT);
-                $st->bindValue('off', $offset, PDO::PARAM_INT);
-                $st->execute();
+                $sql = $baseSql . ' WHERE u.email LIKE :l ESCAPE \'\\\\\' OR u.name LIKE :l2 ESCAPE \'\\\\\'';
+                $bind['l'] = $like;
+                $bind['l2'] = $like;
             }
+            if ($createdFrom !== null) {
+                $sql .= ' AND DATE(u.created_at) >= :ucf';
+                $bind['ucf'] = $createdFrom;
+            }
+            if ($createdTo !== null) {
+                $sql .= ' AND DATE(u.created_at) <= :uct';
+                $bind['uct'] = $createdTo;
+            }
+            $sql .= ' ORDER BY u.id DESC LIMIT :lim OFFSET :off';
+            $st = $pdo->prepare($sql);
+            foreach ($bind as $k => $v) {
+                $st->bindValue($k, $v);
+            }
+            $st->bindValue('lim', $perPage, PDO::PARAM_INT);
+            $st->bindValue('off', $offset, PDO::PARAM_INT);
+            $st->execute();
             while ($row = $st->fetch(PDO::FETCH_ASSOC)) {
                 $out[] = [
                     'id' => (int) $row['id'],
@@ -296,23 +348,35 @@ final class PlatformReportsRepository
     /**
      * @return list<list<string|int>>
      */
-    public function exportOrganizationsCsv(string $q): array
+    public function exportOrganizationsCsv(string $q, ?string $createdFrom = null, ?string $createdTo = null): array
     {
         $rows = [];
         try {
             $pdo = Database::pdo();
+            $bind = [];
             if (trim($q) === '') {
-                $st = $pdo->query(
-                    'SELECT id, name, slug, created_at FROM organizations ORDER BY id DESC LIMIT ' . self::MAX_EXPORT_ROWS
-                );
+                $sql = 'SELECT id, name, slug, created_at FROM organizations WHERE 1=1';
             } else {
                 $like = '%' . $this->likeFragment($q) . '%';
-                $st = $pdo->prepare(
-                    'SELECT id, name, slug, created_at FROM organizations
-                     WHERE name LIKE :l ESCAPE \'\\\\\' OR slug LIKE :l2 ESCAPE \'\\\\\'
-                     ORDER BY id DESC LIMIT ' . self::MAX_EXPORT_ROWS
-                );
-                $st->execute(['l' => $like, 'l2' => $like]);
+                $sql = 'SELECT id, name, slug, created_at FROM organizations
+                     WHERE name LIKE :l ESCAPE \'\\\\\' OR slug LIKE :l2 ESCAPE \'\\\\\'';
+                $bind['l'] = $like;
+                $bind['l2'] = $like;
+            }
+            if ($createdFrom !== null) {
+                $sql .= ' AND DATE(created_at) >= :ocf';
+                $bind['ocf'] = $createdFrom;
+            }
+            if ($createdTo !== null) {
+                $sql .= ' AND DATE(created_at) <= :oct';
+                $bind['oct'] = $createdTo;
+            }
+            $sql .= ' ORDER BY id DESC LIMIT ' . self::MAX_EXPORT_ROWS;
+            if ($bind === []) {
+                $st = $pdo->query($sql);
+            } else {
+                $st = $pdo->prepare($sql);
+                $st->execute($bind);
             }
             if (!$st) {
                 return [];
@@ -339,6 +403,7 @@ final class PlatformReportsRepository
         int $organizationId,
         ?string $dateFrom,
         ?string $dateTo,
+        string $invoiceNumberQ = '',
     ): array {
         $rows = [];
         try {
@@ -365,6 +430,10 @@ final class PlatformReportsRepository
                 $sql .= ' AND i.issue_date <= :dt';
                 $bind['dt'] = $dateTo;
             }
+            if (trim($invoiceNumberQ) !== '') {
+                $sql .= ' AND i.invoice_number LIKE :invq ESCAPE \'\\\\\'';
+                $bind['invq'] = '%' . $this->likeFragment($invoiceNumberQ) . '%';
+            }
             $sql .= ' ORDER BY i.id DESC LIMIT ' . self::MAX_EXPORT_ROWS;
             $st = $pdo->prepare($sql);
             $st->execute($bind);
@@ -390,7 +459,7 @@ final class PlatformReportsRepository
     /**
      * @return list<list<string|int>>
      */
-    public function exportUsersCsv(string $q): array
+    public function exportUsersCsv(string $q, ?string $createdFrom = null, ?string $createdTo = null): array
     {
         $rows = [];
         $baseSql = 'SELECT u.id, u.email, u.name, u.created_at,
@@ -400,15 +469,29 @@ final class PlatformReportsRepository
                 AND (g.expires_at IS NULL OR g.expires_at > CURRENT_TIMESTAMP)';
         try {
             $pdo = Database::pdo();
+            $bind = [];
             if (trim($q) === '') {
-                $st = $pdo->query($baseSql . ' ORDER BY u.id DESC LIMIT ' . self::MAX_EXPORT_ROWS);
+                $sql = $baseSql . ' WHERE 1=1';
             } else {
                 $like = '%' . $this->likeFragment($q) . '%';
-                $st = $pdo->prepare(
-                    $baseSql . ' WHERE u.email LIKE :l ESCAPE \'\\\\\' OR u.name LIKE :l2 ESCAPE \'\\\\\'
-                     ORDER BY u.id DESC LIMIT ' . self::MAX_EXPORT_ROWS
-                );
-                $st->execute(['l' => $like, 'l2' => $like]);
+                $sql = $baseSql . ' WHERE u.email LIKE :l ESCAPE \'\\\\\' OR u.name LIKE :l2 ESCAPE \'\\\\\'';
+                $bind['l'] = $like;
+                $bind['l2'] = $like;
+            }
+            if ($createdFrom !== null) {
+                $sql .= ' AND DATE(u.created_at) >= :ucf';
+                $bind['ucf'] = $createdFrom;
+            }
+            if ($createdTo !== null) {
+                $sql .= ' AND DATE(u.created_at) <= :uct';
+                $bind['uct'] = $createdTo;
+            }
+            $sql .= ' ORDER BY u.id DESC LIMIT ' . self::MAX_EXPORT_ROWS;
+            if ($bind === []) {
+                $st = $pdo->query($sql);
+            } else {
+                $st = $pdo->prepare($sql);
+                $st->execute($bind);
             }
             if (!$st) {
                 return [];

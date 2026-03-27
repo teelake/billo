@@ -139,14 +139,24 @@ final class SystemAdminController extends \App\Core\Controller
         $fromStr = $dateFrom ?? '';
         $toStr = $dateTo ?? '';
 
+        [$createdFrom, $createdTo] = $this->platformReports->normalizeDateRange(
+            $this->request->input('created_from', '') ?? '',
+            $this->request->input('created_to', '') ?? '',
+        );
+        $createdFromStr = $createdFrom ?? '';
+        $createdToStr = $createdTo ?? '';
+
+        $invQRaw = (string) ($this->request->input('inv_q', '') ?? '');
+        $invQ = mb_strlen($invQRaw, 'UTF-8') > 80 ? mb_substr($invQRaw, 0, 80, 'UTF-8') : $invQRaw;
+
         $rows = [];
         $total = 0;
         if ($type === 'organizations') {
-            $total = $this->platformReports->countOrganizations($q);
+            $total = $this->platformReports->countOrganizations($q, $createdFrom, $createdTo);
         } elseif ($type === 'invoices') {
-            $total = $this->platformReports->countInvoices($status, $organizationId, $dateFrom, $dateTo);
+            $total = $this->platformReports->countInvoices($status, $organizationId, $dateFrom, $dateTo, $invQ);
         } else {
-            $total = $this->platformReports->countUsers($q);
+            $total = $this->platformReports->countUsers($q, $createdFrom, $createdTo);
         }
 
         $totalPages = max(1, (int) ceil($total / $perPage));

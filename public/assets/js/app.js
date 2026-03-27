@@ -53,9 +53,6 @@
     const bindRemove = (row) => {
         row.querySelectorAll(".invoice-line-remove").forEach((btn) => {
             btn.addEventListener("click", () => {
-                if (tbody.querySelectorAll("[data-invoice-line]").length <= 1) {
-                    return;
-                }
                 row.remove();
                 renumber();
             });

@@ -535,8 +535,6 @@ final class InvoiceController extends Controller
     {
         return [
             ['description' => '', 'quantity' => '1', 'unit_amount' => '', 'tax_rate' => '0'],
-            ['description' => '', 'quantity' => '1', 'unit_amount' => '', 'tax_rate' => '0'],
-            ['description' => '', 'quantity' => '1', 'unit_amount' => '', 'tax_rate' => '0'],
         ];
     }
 
@@ -544,8 +542,6 @@ final class InvoiceController extends Controller
     private function defaultFormLinesNoTax(): array
     {
         return [
-            ['description' => '', 'quantity' => '1', 'unit_amount' => '', 'tax_rate' => '0'],
-            ['description' => '', 'quantity' => '1', 'unit_amount' => '', 'tax_rate' => '0'],
             ['description' => '', 'quantity' => '1', 'unit_amount' => '', 'tax_rate' => '0'],
         ];
     }
