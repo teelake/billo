@@ -238,10 +238,10 @@ ob_start();
                         <table class="data-table invoice-lines-table">
                             <thead>
                             <tr>
-                                <th>Description</th>
-                                <th style="width:5.5rem">Qty</th>
-                                <th style="width:6.5rem"><?= $is_credit_note ? 'Unit (negative)' : 'Unit price' ?></th>
-                                <th style="width:3rem"></th>
+                                <th class="invoice-lines-table__col invoice-lines-table__col--desc">Description</th>
+                                <th class="invoice-lines-table__col invoice-lines-table__col--qty">Qty</th>
+                                <th class="invoice-lines-table__col invoice-lines-table__col--unit"><?= $is_credit_note ? 'Unit (negative)' : 'Unit price' ?></th>
+                                <th class="invoice-lines-table__col invoice-lines-table__col--actions"></th>
                             </tr>
                             </thead>
                             <tbody data-invoice-lines data-tax-enabled="0" data-next-index="<?= $rowCount ?>">

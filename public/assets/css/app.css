@@ -1780,6 +1780,43 @@ select.input {
     border-radius: var(--radius-sm);
     border: 1px solid var(--color-border);
 }
+.invoice-lines-table {
+    table-layout: fixed;
+    width: 100%;
+}
+/* Description absorbs remaining width (fixed-layout + 1% is a common flex-like pattern) */
+.invoice-lines-table__col--desc {
+    width: 1%;
+    min-width: 12rem;
+}
+.invoice-lines-table__col--qty {
+    width: 3rem;
+    white-space: nowrap;
+}
+.invoice-lines-table__col--unit {
+    width: 6.5rem;
+}
+.invoice-lines-table__col--actions {
+    width: 2.5rem;
+}
+.invoice-lines-table td:first-child .input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+.invoice-lines-table td:nth-child(2) .input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+    text-align: center;
+}
+.invoice-lines-table td:nth-child(3) .input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
 .invoice-lines-table th:last-child,
 .invoice-lines-table td:last-child {
     width: 2.5rem;
