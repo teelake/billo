@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Core\Config;
 use App\Core\Controller;
+use App\Core\Csrf;
 use App\Core\Database;
 use App\Core\Request;
 use App\Core\Session;
@@ -13,7 +13,10 @@ use App\Core\View;
 use App\Repositories\OrganizationRepository;
 use App\Repositories\PlatformAnalyticsRepository;
 use App\Repositories\PlatformReportsRepository;
+use App\Repositories\PlatformSettingsRepository;
 use App\Repositories\UserRepository;
+use App\Services\PlatformConfigurationStore;
+use App\Services\PlatformSettings;
 use PDOException;
 
 final class SystemAdminController extends Controller
@@ -24,6 +27,7 @@ final class SystemAdminController extends Controller
         private OrganizationRepository $organizations = new OrganizationRepository(),
         private PlatformAnalyticsRepository $platformAnalytics = new PlatformAnalyticsRepository(),
         private PlatformReportsRepository $platformReports = new PlatformReportsRepository(),
+        private PlatformConfigurationStore $platformConfig = new PlatformConfigurationStore(),
     ) {
     }
 
@@ -239,64 +243,23 @@ final class SystemAdminController extends Controller
     {
         $this->requireSystemAdmin();
 
-        $mask = static function (?string $v): string {
-            if ($v === null || $v === '') {
-                return '(not set)';
+        if (strtoupper($this->request->method) === 'POST') {
+            if (!Csrf::validate($this->request->input('_csrf'))) {
+                Session::flash('error', 'Invalid session. Try again.');
+                $this->redirect('/system/configuration');
             }
-
-            return strlen($v) <= 6 ? '(set)' : '••••••••…' . substr($v, -4);
-        };
-
-        $smtpUser = (string) Config::get('mail.smtp.username', '');
-        $smtpPass = (string) Config::get('mail.smtp.password', '');
-        $paystackSk = (string) Config::get('payments.paystack.secret_key', '');
-        $paystackPk = (string) Config::get('payments.paystack.public_key', '');
-        $stripeSk = (string) Config::get('payments.stripe.secret_key', '');
-        $stripeWh = (string) Config::get('payments.stripe.webhook_secret', '');
-        $linkSecret = (string) Config::get('payments.link_signing_secret', '');
-        $adminEmails = Config::get('platform.admin_emails', []);
-        $adminList = is_array($adminEmails) ? implode(', ', array_map('strval', $adminEmails)) : '';
+            $errors = $this->platformConfig->save($this->request);
+            if ($errors !== []) {
+                Session::flash('error', implode(' ', $errors));
+                $this->redirect('/system/configuration');
+            }
+            PlatformSettings::applyFromDatabase();
+            Session::flash('success', 'Configuration saved. Database overrides are merged into runtime settings.');
+            $this->redirect('/system/configuration');
+        }
 
         View::render('system/configuration', [
-            'config_snapshot' => [
-                'application' => [
-                    'Name' => (string) Config::get('app.name', ''),
-                    'Environment' => (string) Config::get('app.env', ''),
-                    'Public URL' => (string) Config::get('app.url', ''),
-                    'Base path' => (string) Config::get('app.base_path', ''),
-                    'Debug' => Config::get('app.debug', false) ? 'on' : 'off',
-                ],
-                'session' => [
-                    'Cookie name' => (string) Config::get('session.name', ''),
-                    'Lifetime (sec)' => (string) Config::get('session.lifetime', ''),
-                    'Secure cookie' => Config::get('session.secure', false) ? 'yes' : 'no',
-                    'SameSite' => (string) Config::get('session.samesite', ''),
-                ],
-                'mail' => [
-                    'Driver' => (string) Config::get('mail.driver', ''),
-                    'From' => trim((string) Config::get('mail.from_name', '') . ' <' . (string) Config::get('mail.from_address', '') . '>'),
-                    'SMTP host:port' => (string) Config::get('mail.smtp.host', '') . ':' . (string) Config::get('mail.smtp.port', ''),
-                    'SMTP encryption' => (string) Config::get('mail.smtp.encryption', ''),
-                    'SMTP username' => $smtpUser !== '' ? $mask($smtpUser) : '(not set)',
-                    'SMTP password' => $smtpPass !== '' ? $mask($smtpPass) : '(not set)',
-                ],
-                'payments' => [
-                    'Provider' => (string) Config::get('payments.provider', ''),
-                    'Pay link signing secret' => $linkSecret !== '' ? $mask($linkSecret) : '(not set)',
-                    'Paystack secret' => $paystackSk !== '' ? $mask($paystackSk) : '(not set)',
-                    'Paystack public' => $paystackPk !== '' ? $mask($paystackPk) : '(not set)',
-                    'Stripe secret' => $stripeSk !== '' ? $mask($stripeSk) : '(not set)',
-                    'Stripe webhook secret' => $stripeWh !== '' ? $mask($stripeWh) : '(not set)',
-                ],
-                'platform' => [
-                    'Landing admin emails' => $adminList !== '' ? $adminList : '(none)',
-                ],
-                'auth' => [
-                    'Password reset TTL (min)' => (string) Config::get('auth.password_reset_ttl_minutes', ''),
-                    'Email verification TTL (h)' => (string) Config::get('auth.email_verification_ttl_hours', ''),
-                    'Invitation TTL (days)' => (string) Config::get('auth.invitation_ttl_days', ''),
-                ],
-            ],
+            'db_setting_keys' => (new PlatformSettingsRepository())->allKeys(),
             'user_name' => (string) Session::get('user_name', ''),
             'role' => (string) Session::get('role', 'owner'),
             'show_team_nav' => in_array(Session::get('role', ''), ['owner', 'admin'], true),

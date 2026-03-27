@@ -40,7 +40,7 @@ ob_start();
             <ul class="checklist" style="margin:.75rem 0 0">
                 <li><a href="<?= billo_e(billo_url('/system/analytics')) ?>">Platform analytics</a> — trends, charts, org leaderboard, org-level CSV export</li>
                 <li><a href="<?= billo_e(billo_url('/system/reports')) ?>">Platform reports</a> — filterable organizations, invoices, and users with pagination + export</li>
-                <li><a href="<?= billo_e(billo_url('/system/configuration')) ?>">Configuration snapshot</a> — app URL, mail, payments (masked secrets), session, auth TTLs</li>
+                <li><a href="<?= billo_e(billo_url('/system/configuration')) ?>">Configuration</a> — edit platform settings stored in the database (overrides file config)</li>
                 <li><a href="<?= billo_e(billo_url('/platform/landing')) ?>">Edit public landing / marketing copy</a></li>
             </ul>
         </div>

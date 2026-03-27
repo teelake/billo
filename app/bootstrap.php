@@ -78,6 +78,7 @@ $router->get('/system/analytics/export', static fn () => (new SystemAdminControl
 $router->get('/system/reports', static fn () => (new SystemAdminController($request))->reports());
 $router->get('/system/reports/export', static fn () => (new SystemAdminController($request))->reportsExport());
 $router->get('/system/configuration', static fn () => (new SystemAdminController($request))->configuration());
+$router->post('/system/configuration', static fn () => (new SystemAdminController($request))->configuration());
 $router->get('/analytics', static fn () => (new AnalyticsController())->index());
 $router->get('/clients', static fn () => (new ClientController($request))->index());
 $router->get('/clients/create', static fn () => (new ClientController($request))->create());

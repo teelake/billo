@@ -2424,3 +2424,68 @@ select.input {
     margin: 0;
     word-break: break-word;
 }
+
+.config-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+.config-form__section {
+    margin: 0;
+    padding: 1.15rem 1.2rem 1.2rem;
+    border: none;
+}
+.config-form__legend {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.05rem;
+    padding: 0 0 0.5rem;
+    margin: 0 0 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+    width: 100%;
+}
+.config-form__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: 1rem 1.25rem;
+    align-items: start;
+}
+.config-form__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+.config-form__field--full {
+    grid-column: 1 / -1;
+}
+.config-form__label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-muted);
+}
+.config-form__clear {
+    font-size: 0.78rem;
+    color: var(--color-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.25rem;
+    cursor: pointer;
+}
+.config-form__submit {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+}
+.config-form .input,
+.config-form select.input {
+    width: 100%;
+    max-width: 100%;
+}
+.config-form textarea.input {
+    resize: vertical;
+    min-height: 4rem;
+}

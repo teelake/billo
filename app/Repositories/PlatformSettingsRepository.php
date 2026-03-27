@@ -9,6 +9,26 @@ use PDO;
 
 final class PlatformSettingsRepository
 {
+    /**
+     * @return list<string>
+     */
+    public function allKeys(): array
+    {
+        try {
+            $stmt = Database::pdo()->query('SELECT setting_key FROM platform_settings');
+
+            /** @var list<array{setting_key:string}> $rows */
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return array_values(array_filter(array_map(
+                static fn (array $r): string => (string) ($r['setting_key'] ?? ''),
+                $rows
+            )));
+        } catch (\PDOException) {
+            return [];
+        }
+    }
+
     public function upsert(string $key, ?string $value): void
     {
         if ($value === null || trim($value) === '') {

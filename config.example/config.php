@@ -62,7 +62,12 @@ return [
         'email_verification_ttl_hours' => 48,
         'invitation_ttl_days' => 7,
     ],
-    /** Filled from DB platform_settings when present; can set here for local dev. */
+    /**
+     * Filled from DB `platform_settings` when present (merged at boot).
+     * System operators can edit many keys in-app at /system/configuration;
+     * values there override file config for this PHP process. Prefer
+     * config/local.php for production secrets when possible.
+     */
     'brand' => [
         'tagline' => '',
         'support_email' => '',
