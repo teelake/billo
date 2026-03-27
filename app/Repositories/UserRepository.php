@@ -58,6 +58,33 @@ final class UserRepository
         $stmt->execute(['id' => $userId, 'password_hash' => $passwordHash]);
     }
 
+    public function updateName(int $userId, string $name): void
+    {
+        $stmt = Database::pdo()->prepare(
+            'UPDATE users SET name = :name, updated_at = CURRENT_TIMESTAMP WHERE id = :id'
+        );
+        $stmt->execute(['id' => $userId, 'name' => $name]);
+    }
+
+    /** Lowercase email; clears verification when email changes. */
+    public function updateEmail(int $userId, string $email): void
+    {
+        $stmt = Database::pdo()->prepare(
+            'UPDATE users SET email = :email, email_verified_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = :id'
+        );
+        $stmt->execute(['id' => $userId, 'email' => strtolower(trim($email))]);
+    }
+
+    public function emailExistsForOtherUser(string $email, int $excludeUserId): bool
+    {
+        $stmt = Database::pdo()->prepare(
+            'SELECT 1 FROM users WHERE email = :email AND id <> :exclude LIMIT 1'
+        );
+        $stmt->execute(['email' => strtolower(trim($email)), 'exclude' => $excludeUserId]);
+
+        return (bool) $stmt->fetchColumn();
+    }
+
     public function setEmailVerified(int $userId): void
     {
         $stmt = Database::pdo()->prepare(

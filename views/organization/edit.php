@@ -18,6 +18,8 @@ $val = static function (string $key) use ($o): string {
 
     return is_scalar($v) ? (string) $v : '';
 };
+$logoDisplayUrl = billo_organization_logo_display_url($o);
+$hasStoredLogo = $logoDisplayUrl !== null;
 
 $title = 'Business details — billo';
 ob_start();
@@ -44,7 +46,7 @@ ob_start();
         </div>
 
         <div class="welcome-card" style="max-width:44rem">
-            <form class="form form--spaced" method="post" action="<?= billo_e(billo_url('/organization')) ?>">
+            <form class="form form--spaced" method="post" action="<?= billo_e(billo_url('/organization')) ?>" enctype="multipart/form-data">
                 <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
 
                 <div class="field">
@@ -89,10 +91,22 @@ ob_start();
                     <input class="input" id="company_website" name="company_website" type="text" maxlength="255" value="<?= billo_e($val('company_website')) ?>" placeholder="https://example.com or example.ng" inputmode="url" autocomplete="url">
                     <p class="hint">Optional public site; <strong>one workspace per domain</strong> (<code>www.</code> ignored). Shown on invoice PDF/print when set.</p>
                 </div>
+                <div class="field org-logo-field">
+                    <span class="label">Invoice logo</span>
+                    <div class="org-logo-preview-wrap" id="org-logo-preview-wrap"<?= $hasStoredLogo ? '' : ' hidden' ?>>
+                        <img class="org-logo-preview-wrap__img" id="org-logo-preview-img" src="<?= $hasStoredLogo ? billo_e((string) $logoDisplayUrl) : '' ?>" alt="Logo preview" width="200" height="80" loading="lazy" decoding="async">
+                    </div>
+                    <label class="label" for="logo_upload">Upload image</label>
+                    <input class="input" type="file" id="logo_upload" name="logo_upload" accept="image/jpeg,image/png,image/gif,image/webp">
+                    <p class="hint">Max <strong>1 MB</strong>. JPG, PNG, GIF, or WebP. Large images are scaled (long edge up to 1200 px) and re-encoded at high quality (JPEG 92% or PNG compression) to save space.</p>
+                    <label class="org-logo-remove">
+                        <input type="checkbox" name="remove_logo" value="1"> Remove logo (uploaded or URL)
+                    </label>
+                </div>
                 <div class="field">
-                    <label class="label" for="invoice_logo_url">Logo URL or path</label>
-                    <input class="input" id="invoice_logo_url" name="invoice_logo_url" maxlength="500" value="<?= billo_e($val('invoice_logo_url')) ?>" placeholder="https://… or storage/branding/logo.png">
-                    <p class="hint">Use an <strong>https</strong> image URL, or a path under the project (e.g. <code>storage/branding/logo.png</code>). No file upload yet.</p>
+                    <label class="label" for="invoice_logo_url">Or logo URL / path</label>
+                    <input class="input" id="invoice_logo_url" name="invoice_logo_url" maxlength="500" value="<?= billo_e($val('invoice_logo_url')) ?>" placeholder="https://… (optional if you upload)">
+                    <p class="hint">Use an <strong>https</strong> URL, or leave blank when using an uploaded file.</p>
                 </div>
                 <div class="field">
                     <label class="label" for="invoice_footer">Invoice footer</label>
@@ -124,6 +138,41 @@ $bodyClass = 'app-body';
 </head>
 <body class="<?= billo_e($bodyClass) ?>">
 <?= $content ?>
+<script>
+(function () {
+    var input = document.getElementById('logo_upload');
+    var wrap = document.getElementById('org-logo-preview-wrap');
+    var img = document.getElementById('org-logo-preview-img');
+    var removeCb = document.querySelector('input[name="remove_logo"]');
+    var maxBytes = 1048576;
+    if (!input || !wrap || !img) return;
+    input.addEventListener('change', function () {
+        var f = input.files && input.files[0];
+        if (!f) return;
+        if (f.size > maxBytes) {
+            alert('Logo must be 1 MB or smaller.');
+            input.value = '';
+            return;
+        }
+        var rd = new FileReader();
+        rd.onload = function () {
+            img.src = rd.result;
+            wrap.hidden = false;
+            if (removeCb) removeCb.checked = false;
+        };
+        rd.readAsDataURL(f);
+    });
+    if (removeCb) {
+        removeCb.addEventListener('change', function () {
+            if (removeCb.checked) {
+                wrap.hidden = true;
+                img.removeAttribute('src');
+                if (input) input.value = '';
+            }
+        });
+    }
+})();
+</script>
 <script src="<?= billo_e(billo_asset('js/app.js')) ?>" defer></script>
 </body>
 </html>

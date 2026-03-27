@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Autoloader;
+use App\Controllers\AccountController;
 use App\Controllers\AnalyticsController;
 use App\Controllers\AuthController;
 use App\Controllers\DashboardController;
@@ -119,8 +120,13 @@ $router->post('/reset-password', static fn () => (new AuthController($request))-
 $router->get('/verify-email', static fn () => (new AuthController($request))->verifyEmail());
 $router->post('/email/verification-notification', static fn () => (new AuthController($request))->resendVerificationEmail());
 $router->get('/invitations/accept', static fn () => (new AuthController($request))->acceptInvitation());
+$router->get('/account/profile', static fn () => (new AccountController($request))->profile());
+$router->post('/account/profile', static fn () => (new AccountController($request))->profileSave());
+$router->get('/account/password', static fn () => (new AccountController($request))->password());
+$router->post('/account/password', static fn () => (new AccountController($request))->passwordSave());
 $router->get('/organization', static fn () => (new OrganizationController($request))->edit());
 $router->post('/organization', static fn () => (new OrganizationController($request))->update());
+$router->get('/organization/logo', static fn () => (new OrganizationController($request))->logo());
 $router->get('/team', static fn () => (new TeamController($request))->index());
 $router->post('/team/invite', static fn () => (new TeamController($request))->invite());
 $router->post('/team/invites/revoke', static fn () => (new TeamController($request))->revokeInvite());

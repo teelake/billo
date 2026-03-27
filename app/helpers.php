@@ -133,6 +133,27 @@ function billo_app_nav_mode(): string
     return $m === 'platform' ? 'platform' : 'organization';
 }
 
+/**
+ * img[src] for organization invoice logo: remote URL or authenticated local route.
+ *
+ * @param array<string, mixed>|null $organization
+ */
+function billo_organization_logo_display_url(?array $organization): ?string
+{
+    if ($organization === null) {
+        return null;
+    }
+    $raw = trim((string) ($organization['invoice_logo_url'] ?? ''));
+    if ($raw === '') {
+        return null;
+    }
+    if (str_starts_with($raw, 'https://') || str_starts_with($raw, 'http://')) {
+        return $raw;
+    }
+
+    return billo_url('/organization/logo');
+}
+
 function billo_is_platform_admin(): bool
 {
     if (session_status() !== PHP_SESSION_ACTIVE) {

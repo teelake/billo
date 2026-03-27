@@ -158,6 +158,11 @@ if (function_exists('mb_strlen') && mb_strlen($initials, 'UTF-8') > 2) {
                 <?php endif; ?>
                 <p class="app-profile__role"><span class="capitalize"><?= billo_e($role) ?></span></p>
                 <hr class="app-profile__rule">
+                <div class="app-profile__links">
+                    <a class="app-profile__link" href="<?= billo_e(billo_url('/account/profile')) ?>">Edit profile</a>
+                    <a class="app-profile__link" href="<?= billo_e(billo_url('/account/password')) ?>">Change password</a>
+                </div>
+                <hr class="app-profile__rule">
                 <form method="post" action="<?= billo_e(billo_url('/logout')) ?>" class="app-profile__logout">
                     <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
                     <button type="submit" class="btn btn--ghost btn--sm btn--block">Log out</button>

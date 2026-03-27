@@ -10,6 +10,7 @@ use App\Core\Request;
 use App\Core\Session;
 use App\Core\View;
 use App\Repositories\OrganizationRepository;
+use App\Services\OrganizationLogoService;
 use App\Support\OrganizationIdentityNormalizer;
 use PDOException;
 
@@ -48,7 +49,34 @@ final class OrganizationController extends Controller
             $this->redirect('/organization');
         }
 
-        $payload = $this->validatedPayload((int) $ctx['organization_id']);
+        $orgId = (int) $ctx['organization_id'];
+        $removeLogo = isset($_POST['remove_logo']) && $_POST['remove_logo'] === '1';
+        $logoUploadPath = null;
+        if (!$removeLogo && !empty($_FILES['logo_upload']) && is_array($_FILES['logo_upload'])) {
+            $fe = (int) ($_FILES['logo_upload']['error'] ?? UPLOAD_ERR_NO_FILE);
+            if ($fe !== UPLOAD_ERR_NO_FILE) {
+                if ($fe !== UPLOAD_ERR_OK) {
+                    Session::flash('error', match ($fe) {
+                        UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Logo file must be 1 MB or smaller.',
+                        UPLOAD_ERR_PARTIAL => 'Logo upload was interrupted.',
+                        default => 'Logo upload failed.',
+                    });
+                    $this->redirect('/organization');
+                }
+                $uploadResult = OrganizationLogoService::processAndStore($_FILES['logo_upload'], $orgId);
+                if (!($uploadResult['ok'] ?? false)) {
+                    Session::flash('error', $uploadResult['error'] ?? 'Logo upload failed.');
+                    $this->redirect('/organization');
+                }
+                /** @var array{ok: true, path: string} $uploadResult */
+                $logoUploadPath = $uploadResult['path'];
+            }
+        }
+        if ($removeLogo) {
+            OrganizationLogoService::removeBrandingFiles($orgId);
+        }
+
+        $payload = $this->validatedPayload($orgId, $logoUploadPath, $removeLogo);
         if (is_string($payload)) {
             Session::flash('error', $payload);
             $this->redirect('/organization');
@@ -69,6 +97,47 @@ final class OrganizationController extends Controller
         }
         Session::flash('success', 'Business details saved. They appear on printed invoices, PDFs, and emails.');
         $this->redirect('/organization');
+    }
+
+    /** Serve uploaded invoice logo for current organization (authenticated). */
+    public function logo(): void
+    {
+        $ctx = $this->requireAuth();
+        $org = $this->organizations->findById($ctx['organization_id']);
+        if ($org === null) {
+            http_response_code(404);
+
+            return;
+        }
+        $ref = trim(str_replace('\\', '/', (string) ($org['invoice_logo_url'] ?? '')));
+        if ($ref === '' || str_starts_with($ref, 'http://') || str_starts_with($ref, 'https://')) {
+            http_response_code(404);
+
+            return;
+        }
+        $expected = 'storage/branding/' . $ctx['organization_id'] . '/';
+        if (!str_starts_with(ltrim($ref, '/'), $expected)) {
+            http_response_code(403);
+
+            return;
+        }
+        $full = BILLO_ROOT . '/' . str_replace('/', DIRECTORY_SEPARATOR, ltrim($ref, '/'));
+        $real = realpath($full);
+        $base = realpath(OrganizationLogoService::brandDir($ctx['organization_id']));
+        if ($real === false || $base === false || !str_starts_with($real, $base) || !is_file($real)) {
+            http_response_code(404);
+
+            return;
+        }
+        $mime = @mime_content_type($real);
+        if (!is_string($mime) || !str_starts_with($mime, 'image/')) {
+            http_response_code(404);
+
+            return;
+        }
+        header('Content-Type: ' . $mime);
+        header('Cache-Control: private, max-age=3600');
+        readfile($real);
     }
 
     private function validateCsrf(): bool
@@ -94,7 +163,7 @@ final class OrganizationController extends Controller
      *   invoice_logo_url:?string
      * }|string
      */
-    private function validatedPayload(int $organizationId): array|string
+    private function validatedPayload(int $organizationId, ?string $logoUploadPath, bool $removeLogo): array|string
     {
         $legal = $this->trimOrNull($this->request->input('legal_name', ''), 200);
         $l1 = $this->trimOrNull($this->request->input('billing_address_line1', ''), 255);
@@ -115,7 +184,14 @@ final class OrganizationController extends Controller
             return 'Enter a valid company website (URL or domain, e.g. https://example.com or example.ng).';
         }
         $footer = $this->trimOrNull($this->request->input('invoice_footer', ''), 65535);
-        $logo = $this->trimOrNull($this->request->input('invoice_logo_url', ''), 500);
+
+        if ($removeLogo) {
+            $logo = null;
+        } elseif ($logoUploadPath !== null) {
+            $logo = $logoUploadPath;
+        } else {
+            $logo = $this->trimOrNull($this->request->input('invoice_logo_url', ''), 500);
+        }
 
         if ($logo !== null) {
             if (str_starts_with($logo, 'https://')) {

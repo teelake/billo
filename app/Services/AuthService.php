@@ -379,6 +379,24 @@ final class AuthService
             return;
         }
 
+        $this->queueVerifyEmailDeliver($userId, $user);
+    }
+
+    /** After profile email change (already unverified). Always queues a new link. */
+    public function sendEmailVerificationForUser(int $userId): void
+    {
+        $user = $this->users->findById($userId);
+        if ($user === null) {
+            return;
+        }
+        $this->queueVerifyEmailDeliver($userId, $user);
+    }
+
+    /**
+     * @param array<string, mixed> $userRow from findById
+     */
+    private function queueVerifyEmailDeliver(int $userId, array $userRow): void
+    {
         $plain = SecureToken::plain();
         $hash = SecureToken::hash($plain);
         $hours = (int) Config::get('auth.email_verification_ttl_hours', 48);
@@ -386,10 +404,36 @@ final class AuthService
         $exp = (new DateTimeImmutable())->add(new DateInterval('PT' . $hours . 'H'));
         $this->emailVerification->upsert($userId, $hash, $exp);
 
-        $ok = $this->emails->sendVerifyEmail((string) $user['email'], $plain);
+        $ok = $this->emails->sendVerifyEmail((string) $userRow['email'], $plain);
         if (!$ok) {
             error_log('Billo: verification email failed to send for user ' . $userId);
         }
+    }
+
+    public function verifyPasswordForUser(int $userId, string $plainPassword): bool
+    {
+        $user = $this->users->findById($userId);
+        if ($user === null) {
+            return false;
+        }
+
+        return password_verify($plainPassword, (string) $user['password_hash']);
+    }
+
+    /** @return string|null Error message or null on success. */
+    public function changePassword(int $userId, string $newPassword): ?string
+    {
+        $err = PasswordRules::validate($newPassword);
+        if ($err !== null) {
+            return $err;
+        }
+        $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+        if ($hash === false) {
+            return 'Could not update password. Please try again.';
+        }
+        $this->users->updatePassword($userId, $hash);
+
+        return null;
     }
 
     private function isValidEmail(string $email): bool

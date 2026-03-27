@@ -1315,6 +1315,59 @@ a:hover {
     margin: 0;
 }
 
+.app-profile__links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.app-profile__link {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--color-secondary);
+    text-decoration: none;
+    padding: 0.25rem 0;
+    border-radius: var(--radius-sm);
+}
+
+.app-profile__link:hover {
+    color: var(--color-ink);
+    text-decoration: underline;
+}
+
+.org-logo-field .org-logo-preview-wrap {
+    margin: 0.5rem 0 0.75rem;
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--color-border);
+    background: rgba(248, 250, 252, 0.9);
+    display: inline-block;
+    max-width: 100%;
+}
+
+.org-logo-preview-wrap__img {
+    display: block;
+    max-width: 220px;
+    max-height: 100px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+.org-logo-remove {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.65rem;
+    font-size: 0.9rem;
+    color: var(--color-muted);
+    cursor: pointer;
+}
+
+.org-logo-remove input {
+    margin: 0;
+}
+
 .app-profile__rule {
     border: none;
     border-top: 1px solid var(--color-border);
