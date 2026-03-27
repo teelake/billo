@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 use App\Core\Csrf;
 
-/** @var string $active dashboard|team|clients */
+/** @var string $active dashboard|team|clients|invoices */
 /** @var bool $show_team_nav */
 /** @var string $user_name */
 /** @var string $role */
@@ -15,6 +15,7 @@ use App\Core\Csrf;
             <nav class="app-subnav" aria-label="App">
                 <a class="app-subnav__link<?= ($active ?? '') === 'dashboard' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/dashboard')) ?>">Dashboard</a>
                 <a class="app-subnav__link<?= ($active ?? '') === 'clients' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/clients')) ?>">Clients</a>
+                <a class="app-subnav__link<?= ($active ?? '') === 'invoices' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/invoices')) ?>">Invoices</a>
                 <?php if (!empty($show_team_nav)): ?>
                     <a class="app-subnav__link<?= ($active ?? '') === 'team' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/team')) ?>">Team</a>
                 <?php endif; ?>

@@ -45,12 +45,13 @@ ob_start();
             <p class="eyebrow eyebrow--dark">You’re in</p>
             <h1 class="welcome-card__title"><?= billo_e($orgName) ?></h1>
             <p class="welcome-card__text">
-                Signed in as <strong><?= billo_e($user_email) ?></strong>. Add clients you bill, then we’ll attach invoices and branding here.
+                Signed in as <strong><?= billo_e($user_email) ?></strong>. Create invoices, track clients, and keep your org data in one place.
             </p>
             <div class="welcome-card__actions">
-                <a class="btn btn--primary" href="<?= billo_e(billo_url('/clients')) ?>">Manage clients</a>
+                <a class="btn btn--primary" href="<?= billo_e(billo_url('/invoices')) ?>">Invoices</a>
+                <a class="btn btn--secondary" href="<?= billo_e(billo_url('/clients')) ?>">Clients</a>
                 <?php if ($can_manage_clients): ?>
-                    <a class="btn btn--secondary" href="<?= billo_e(billo_url('/clients/create')) ?>">New client</a>
+                    <a class="btn btn--secondary" href="<?= billo_e(billo_url('/invoices/create')) ?>">New invoice</a>
                 <?php endif; ?>
             </div>
             <div class="welcome-card__chips">
