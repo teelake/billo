@@ -77,7 +77,10 @@ final class EmailNotifications
     ): bool {
         $app = (string) Config::get('app.name', 'billo');
         $num = (string) ($invoice['invoice_number'] ?? 'Invoice');
-        $subject = "{$num} from {$organizationName} — {$app}";
+        $invKind = (string) ($invoice['invoice_kind'] ?? 'invoice');
+        $subject = $invKind === 'credit_note'
+            ? "{$num} — Credit note from {$organizationName} — {$app}"
+            : "{$num} from {$organizationName} — {$app}";
 
         $currency = (string) ($invoice['currency'] ?? 'NGN');
         $issue = (string) ($invoice['issue_date'] ?? '');
@@ -94,7 +97,7 @@ final class EmailNotifications
         /** @var list<array<string, mixed>> $lines */
         $lines = isset($invoice['lines']) && is_array($invoice['lines']) ? $invoice['lines'] : [];
 
-        $text = "Invoice {$num}\nFrom: {$organizationName}\n\n";
+        $text = ($invKind === 'credit_note' ? "Credit note {$num}" : "Invoice {$num}") . "\nFrom: {$organizationName}\n\n";
         $text .= "Bill to: {$clientLine}\n";
         $text .= "Issue date: {$issue}\n";
         if ($due !== '') {
@@ -131,6 +134,22 @@ final class EmailNotifications
         if ($pdfBinary !== null && $pdfBinary !== '') {
             $text .= "\n(A PDF copy is attached.)\n";
         }
+
+        $payUrl = '';
+        $invStatus = (string) ($invoice['status'] ?? '');
+        $invTotal = (float) ($invoice['total'] ?? 0);
+        if (
+            $invKind === 'invoice'
+            && $invStatus === 'sent'
+            && $invTotal > 0
+            && (new StripeCheckoutService())->isConfigured()
+        ) {
+            $payUrl = (new PaymentLinkService())->buildUrl((int) ($invoice['id'] ?? 0), (int) ($invoice['organization_id'] ?? 0));
+        }
+        if ($payUrl !== '') {
+            $text .= "\nPay online (card): {$payUrl}\n";
+        }
+
         $text .= "\n—\nSent via {$app}\n";
 
         $h = static function (string $s): string {
@@ -159,8 +178,17 @@ final class EmailNotifications
                 . '<p style="margin:0;white-space:pre-wrap;color:#334155">' . $h((string) $invoice['notes']) . '</p>';
         }
 
+        $kindLabel = $invKind === 'credit_note' ? 'Credit note' : 'Invoice';
+        $payBlock = '';
+        if ($payUrl !== '') {
+            $payBlock = '<p style="margin:24px 0 0"><a href="' . $h($payUrl) . '" '
+                . 'style="display:inline-block;padding:12px 20px;background:#16a34a;color:#fff;border-radius:999px;text-decoration:none;font-weight:600">'
+                . 'Pay invoice online</a></p>'
+                . '<p style="margin:12px 0 0;font-size:13px;color:#64748b">Or copy this link:<br>' . $h($payUrl) . '</p>';
+        }
+
         $html = '<div style="font-family:Inter,system-ui,sans-serif;max-width:640px;color:#0f172a;line-height:1.55">'
-            . '<p style="margin:0 0 8px;font-size:13px;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Invoice</p>'
+            . '<p style="margin:0 0 8px;font-size:13px;color:#64748b;text-transform:uppercase;letter-spacing:.06em">' . $h($kindLabel) . '</p>'
             . '<h1 style="margin:0 0 4px;font-size:26px;font-weight:700;letter-spacing:-.02em">' . $h($num) . '</h1>'
             . '<p style="margin:0 0 20px;color:#334155">From <strong>' . $h($organizationName) . '</strong></p>'
             . '<table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:15px">'
@@ -184,7 +212,8 @@ final class EmailNotifications
             . '</table>'
             . $notesHtml
             . ($pdfBinary !== null && $pdfBinary !== ''
-                ? '<p style="margin:24px 0 0;font-size:14px;color:#334155">A <strong>PDF copy</strong> of this invoice is attached.</p>' : '')
+                ? '<p style="margin:24px 0 0;font-size:14px;color:#334155">A <strong>PDF copy</strong> is attached.</p>' : '')
+            . $payBlock
             . '<p style="margin:28px 0 0;font-size:13px;color:#94a3b8">Sent via ' . $h($app) . '</p>'
             . '</div>';
 

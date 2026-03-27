@@ -67,4 +67,22 @@ return [
         'tagline' => '',
         'support_email' => '',
     ],
+    /**
+     * Emails (lowercase) allowed to edit marketing/landing content at /platform/landing.
+     */
+    'platform' => [
+        'admin_emails' => [
+            // 'you@example.com',
+        ],
+    ],
+    /**
+     * Public invoice pay links (HMAC) and Stripe Checkout / webhooks.
+     * Prefer secrets in config/local.php.
+     */
+    'payments' => [
+        'link_signing_secret' => '',
+        'stripe_secret_key' => '',
+        'stripe_publishable_key' => '',
+        'stripe_webhook_secret' => '',
+    ],
 ];

@@ -79,6 +79,9 @@ final class InvoicePdfService
             . $h($footer) . '</div>' : '';
 
         $num = (string) ($invoice['invoice_number'] ?? 'Invoice');
+        $invKind = (string) ($invoice['invoice_kind'] ?? 'invoice');
+        $creditRef = trim((string) ($invoice['credited_invoice_number'] ?? ''));
+        $docLabel = $invKind === 'credit_note' ? 'Credit note' : 'Invoice';
         $currency = (string) ($invoice['currency'] ?? 'NGN');
         $issue = (string) ($invoice['issue_date'] ?? '');
         $due = isset($invoice['due_date']) && $invoice['due_date'] !== null && $invoice['due_date'] !== ''
@@ -116,15 +119,22 @@ final class InvoicePdfService
                 . '<div style="font-size:11px;color:#334155;white-space:pre-wrap">' . $h((string) $invoice['notes']) . '</div></div>';
         }
 
+        $creditRefHtml = '';
+        if ($invKind === 'credit_note' && $creditRef !== '') {
+            $creditRefHtml = '<div style="font-size:10px;color:#64748b;margin-top:6px">Applies to invoice: <strong>' . $h($creditRef) . '</strong></div>';
+        }
+
         return '<!DOCTYPE html><html><head><meta charset="UTF-8">'
             . '<style>body{font-family:DejaVu Sans,sans-serif;font-size:12px;color:#0f172a;margin:24px}</style></head><body>'
             . $logoHtml
             . '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">'
-            . '<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#64748b;margin-bottom:4px">Invoice from</div>'
+            . '<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#64748b;margin-bottom:4px">' . $h($docLabel) . ' from</div>'
             . '<div style="font-size:16px;font-weight:700">' . $h($displayName) . '</div>'
             . $addrHtml . $taxHtml . '</div>'
             . '<div style="text-align:right">'
+            . '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:2px">' . $h($docLabel) . '</div>'
             . '<div style="font-size:20px;font-weight:700">' . $h($num) . '</div>'
+            . $creditRefHtml
             . '<div style="font-size:11px;color:#475569;margin-top:6px">Issue: ' . $h($issue) . '</div>'
             . ($due !== '' ? '<div style="font-size:11px;color:#475569">Due: ' . $h($due) . '</div>' : '')
             . '<div style="font-size:11px;color:#475569">Status: ' . $h($status) . '</div></div></div>'

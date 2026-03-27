@@ -7,6 +7,7 @@ use App\Core\Csrf;
 /** @var list<array<string, mixed>> $lines */
 /** @var list<array<string, mixed>> $clients */
 /** @var bool $is_edit */
+/** @var bool $is_credit_note */
 /** @var string $user_name */
 /** @var string $role */
 /** @var bool $show_team_nav */
@@ -14,7 +15,9 @@ use App\Core\Csrf;
 $error = $error ?? '';
 $inv = is_array($invoice) ? $invoice : [];
 $is_edit = !empty($is_edit);
+$is_credit_note = !empty($is_credit_note);
 $invId = isset($inv['id']) ? (int) $inv['id'] : 0;
+$creditedRef = $is_credit_note ? trim((string) ($inv['credited_invoice_number'] ?? '')) : '';
 
 $defaultIssue = date('Y-m-d');
 $issueVal = $is_edit ? (string) ($inv['issue_date'] ?? $defaultIssue) : $defaultIssue;
@@ -29,7 +32,7 @@ if ($lineList === []) {
 }
 $rowCount = count($lineList);
 
-$title = ($is_edit ? 'Edit invoice' : 'New invoice') . ' — billo';
+$title = ($is_credit_note ? 'Edit credit note' : ($is_edit ? 'Edit invoice' : 'New invoice')) . ' — billo';
 ob_start();
 ?>
 <section class="app-dashboard">
@@ -40,8 +43,19 @@ ob_start();
     <div class="container app-dashboard__body">
         <div class="page-head">
             <div>
-                <h1 class="page-head__title"><?= $is_edit ? 'Edit invoice' : 'New invoice' ?></h1>
-                <p class="page-head__lead"><?= $is_edit ? 'Update draft line items and details.' : 'Create a draft—you can mark it sent once a client is set.' ?></p>
+                <h1 class="page-head__title"><?= $is_credit_note ? 'Edit credit note' : ($is_edit ? 'Edit invoice' : 'New invoice') ?></h1>
+                <p class="page-head__lead"><?php
+                    if ($is_credit_note) {
+                        echo 'Credit notes use negative unit amounts for each line.';
+                        if ($creditedRef !== '') {
+                            echo ' Applies to invoice ' . billo_e($creditedRef) . '.';
+                        }
+                    } elseif ($is_edit) {
+                        echo 'Update draft line items and details.';
+                    } else {
+                        echo 'Create a draft—you can mark it sent once a client is set.';
+                    }
+                ?></p>
             </div>
             <a class="btn btn--secondary" href="<?= billo_e(billo_url($is_edit ? '/invoices/show?id=' . $invId : '/invoices')) ?>"><?= $is_edit ? 'Cancel' : 'Back' ?></a>
         </div>
@@ -106,7 +120,7 @@ ob_start();
                             <tr>
                                 <th>Description</th>
                                 <th style="width:5.5rem">Qty</th>
-                                <th style="width:6.5rem">Unit</th>
+                                <th style="width:6.5rem"><?= $is_credit_note ? 'Unit (negative)' : 'Unit' ?></th>
                                 <th style="width:5rem">Tax %</th>
                                 <th style="width:3rem"></th>
                             </tr>

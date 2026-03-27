@@ -7,7 +7,10 @@ $bodyClass = $bodyClass ?? '';
 $brandTagline = billo_brand_tagline();
 $metaDescription = $brandTagline !== ''
     ? $brandTagline
-    : 'NRS-aligned invoicing for Nigerian freelancers and businesses. Simple to use, built for compliance and growth.';
+    : billo_landing(
+        'hero_subtitle',
+        'NRS-aligned invoicing for Nigerian freelancers and businesses. Simple to use, built for compliance and growth.',
+    );
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -63,6 +66,9 @@ $metaDescription = $brandTagline !== ''
                 <h3 class="site-footer__heading">Account</h3>
                 <ul class="site-footer__list">
                     <li><a href="<?= billo_e(billo_url('/login')) ?>">Log in</a></li>
+                    <?php if (billo_is_platform_admin()): ?>
+                        <li><a href="<?= billo_e(billo_url('/platform/landing')) ?>">Edit landing page</a></li>
+                    <?php endif; ?>
                 </ul>
             </div>
         </div>

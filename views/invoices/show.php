@@ -12,6 +12,10 @@ use App\Core\Csrf;
 $error = $error ?? '';
 $success = $success ?? '';
 $status = (string) ($invoice['status'] ?? '');
+$invKind = (string) ($invoice['invoice_kind'] ?? 'invoice');
+$isCreditNote = $invKind === 'credit_note';
+$creditedRef = trim((string) ($invoice['credited_invoice_number'] ?? ''));
+$payOnlineUrl = isset($pay_online_url) ? trim((string) $pay_online_url) : '';
 $invId = (int) ($invoice['id'] ?? 0);
 $currency = (string) ($invoice['currency'] ?? 'NGN');
 /** @var list<array<string, mixed>> $lines */
@@ -108,6 +112,14 @@ ob_start();
             </div>
         </div>
 
+        <?php if ($payOnlineUrl !== ''): ?>
+            <div class="welcome-card" style="margin-top:1.25rem">
+                <h2 class="invoice-detail-card__h">Pay online</h2>
+                <p class="invoice-detail-card__muted" style="margin:.25rem 0 .75rem">Share this link with your client (no login required).</p>
+                <p style="margin:0;word-break:break-all;font-size:.9rem"><code><?= billo_e($payOnlineUrl) ?></code></p>
+            </div>
+        <?php endif; ?>
+
         <?php if ($can_manage): ?>
             <div class="invoice-actions welcome-card" style="margin-top:1.25rem">
                 <?php
@@ -138,15 +150,24 @@ ob_start();
                         <button type="submit" class="btn btn--ghost" style="color:var(--color-danger)">Delete draft</button>
                     </form>
                 <?php elseif ($status === 'sent'): ?>
-                    <form method="post" action="<?= billo_e(billo_url('/invoices/mark-paid')) ?>" class="inline-form">
-                        <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
-                        <input type="hidden" name="id" value="<?= $invId ?>">
-                        <button type="submit" class="btn btn--primary">Mark as paid</button>
-                    </form>
+                    <?php if (!$isCreditNote): ?>
+                        <form method="post" action="<?= billo_e(billo_url('/invoices/mark-paid')) ?>" class="inline-form">
+                            <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
+                            <input type="hidden" name="id" value="<?= $invId ?>">
+                            <button type="submit" class="btn btn--primary">Mark as paid</button>
+                        </form>
+                    <?php endif; ?>
                     <form method="post" action="<?= billo_e(billo_url('/invoices/void')) ?>" class="inline-form" onsubmit="return confirm('Void this invoice?');">
                         <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
                         <input type="hidden" name="id" value="<?= $invId ?>">
                         <button type="submit" class="btn btn--secondary">Void</button>
+                    </form>
+                <?php endif; ?>
+                <?php if (!$isCreditNote && in_array($status, ['sent', 'paid'], true)): ?>
+                    <form method="post" action="<?= billo_e(billo_url('/invoices/credit-note')) ?>" class="inline-form" onsubmit="return confirm('Create a draft credit note from this invoice?');">
+                        <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
+                        <input type="hidden" name="id" value="<?= $invId ?>">
+                        <button type="submit" class="btn btn--secondary">Create credit note</button>
                     </form>
                 <?php endif; ?>
             </div>

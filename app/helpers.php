@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Core\Config;
+use App\Core\Session;
 
 function billo_url(string $path = '/'): string
 {
@@ -70,4 +71,38 @@ function billo_brand_tagline(): string
 function billo_support_email(): string
 {
     return (string) Config::get('brand.support_email', '');
+}
+
+/** Marketing copy from platform_settings (landing.*), merged into config at boot. */
+function billo_landing(string $key, string $default = ''): string
+{
+    $v = Config::get('landing.' . $key, null);
+    if (is_string($v) && $v !== '') {
+        return $v;
+    }
+
+    return $default;
+}
+
+/** Session user email is listed in config platform.admin_emails (list of strings). */
+function billo_is_platform_admin(): bool
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        return false;
+    }
+    $raw = Config::get('platform.admin_emails', []);
+    if (!is_array($raw) || $raw === []) {
+        return false;
+    }
+    $email = strtolower(trim((string) Session::get('user_email', '')));
+    if ($email === '') {
+        return false;
+    }
+    foreach ($raw as $e) {
+        if (strtolower(trim((string) $e)) === $email) {
+            return true;
+        }
+    }
+
+    return false;
 }

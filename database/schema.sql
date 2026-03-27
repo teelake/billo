@@ -120,6 +120,8 @@ CREATE TABLE IF NOT EXISTS invoices (
     client_id INT UNSIGNED NULL,
     invoice_number VARCHAR(48) NOT NULL,
     status ENUM('draft', 'sent', 'paid', 'void') NOT NULL DEFAULT 'draft',
+    invoice_kind ENUM('invoice', 'credit_note') NOT NULL DEFAULT 'invoice',
+    credited_invoice_id INT UNSIGNED NULL DEFAULT NULL,
     issue_date DATE NOT NULL,
     due_date DATE NULL,
     currency CHAR(3) NOT NULL DEFAULT 'NGN',
@@ -129,15 +131,21 @@ CREATE TABLE IF NOT EXISTS invoices (
     total DECIMAL(14,2) NOT NULL DEFAULT 0.00,
     sent_at TIMESTAMP NULL DEFAULT NULL,
     paid_at TIMESTAMP NULL DEFAULT NULL,
+    payment_provider VARCHAR(32) NULL DEFAULT NULL,
+    gateway_checkout_ref VARCHAR(255) NULL DEFAULT NULL,
+    gateway_transaction_ref VARCHAR(255) NULL DEFAULT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY invoices_org_number (organization_id, invoice_number),
     KEY invoices_org_status (organization_id, status),
     KEY invoices_client (client_id),
+    KEY invoices_credited (credited_invoice_id),
     CONSTRAINT fk_invoices_organization FOREIGN KEY (organization_id)
         REFERENCES organizations (id) ON DELETE CASCADE,
     CONSTRAINT fk_invoices_client FOREIGN KEY (client_id)
-        REFERENCES clients (id) ON DELETE SET NULL
+        REFERENCES clients (id) ON DELETE SET NULL,
+    CONSTRAINT fk_invoices_credited_invoice FOREIGN KEY (credited_invoice_id)
+        REFERENCES invoices (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS invoice_line_items (

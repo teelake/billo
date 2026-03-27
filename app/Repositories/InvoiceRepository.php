@@ -15,7 +15,7 @@ final class InvoiceRepository
     public function listForOrganization(int $organizationId): array
     {
         $stmt = Database::pdo()->prepare(
-            'SELECT i.id, i.invoice_number, i.status, i.issue_date, i.due_date, i.currency,
+            'SELECT i.id, i.invoice_number, i.status, i.invoice_kind, i.issue_date, i.due_date, i.currency,
                     i.subtotal, i.tax_total, i.total, i.client_id, i.sent_at, i.paid_at, i.created_at,
                     c.name AS client_name, c.company_name AS client_company
              FROM invoices i
@@ -35,9 +35,11 @@ final class InvoiceRepository
     {
         $pdo = Database::pdo();
         $stmt = $pdo->prepare(
-            'SELECT i.*, c.name AS client_name, c.company_name AS client_company, c.email AS client_email
+            'SELECT i.*, c.name AS client_name, c.company_name AS client_company, c.email AS client_email,
+                    cred_ref.invoice_number AS credited_invoice_number
              FROM invoices i
              LEFT JOIN clients c ON c.id = i.client_id
+             LEFT JOIN invoices cred_ref ON cred_ref.id = i.credited_invoice_id
              WHERE i.id = :id AND i.organization_id = :organization_id
              LIMIT 1'
         );
@@ -73,10 +75,13 @@ final class InvoiceRepository
         string $currency,
         ?string $notes,
         array $lines,
+        string $invoiceKind = 'invoice',
+        ?int $creditedInvoiceId = null,
     ): int {
         $enriched = self::enrichLinesWithAmounts($lines);
         $totals = self::sumMoneyTotals($enriched);
         $pdo = Database::pdo();
+        $kind = $invoiceKind === 'credit_note' ? 'credit_note' : 'invoice';
 
         try {
             $pdo->beginTransaction();
@@ -86,10 +91,12 @@ final class InvoiceRepository
             $stmt = $pdo->prepare(
                 'INSERT INTO invoices (
                     organization_id, client_id, invoice_number, status,
+                    invoice_kind, credited_invoice_id,
                     issue_date, due_date, currency, notes,
                     subtotal, tax_total, total
                 ) VALUES (
                     :organization_id, :client_id, :invoice_number, \'draft\',
+                    :invoice_kind, :credited_invoice_id,
                     :issue_date, :due_date, :currency, :notes,
                     :subtotal, :tax_total, :total
                 )'
@@ -98,6 +105,8 @@ final class InvoiceRepository
                 'organization_id' => $organizationId,
                 'client_id' => $clientId,
                 'invoice_number' => $invoiceNumber,
+                'invoice_kind' => $kind,
+                'credited_invoice_id' => $creditedInvoiceId,
                 'issue_date' => $issueDate,
                 'due_date' => $dueDate,
                 'currency' => $currency,
@@ -118,6 +127,59 @@ final class InvoiceRepository
         }
 
         return $invoiceId;
+    }
+
+    /**
+     * Draft credit note mirroring line items (negated unit prices). Source must be sent/paid standard invoice.
+     *
+     * @throws RuntimeException
+     */
+    public function createCreditNoteFromSource(int $organizationId, int $sourceInvoiceId): int
+    {
+        $src = $this->findWithLines($sourceInvoiceId, $organizationId);
+        if ($src === null) {
+            throw new RuntimeException('Invoice not found.');
+        }
+        $kind = (string) ($src['invoice_kind'] ?? 'invoice');
+        $status = (string) ($src['status'] ?? '');
+        if ($kind !== 'invoice' || !in_array($status, ['sent', 'paid'], true)) {
+            throw new RuntimeException('Credit notes can only be started from sent or paid standard invoices.');
+        }
+
+        $linesIn = [];
+        /** @var list<array<string, mixed>> $srcLines */
+        $srcLines = isset($src['lines']) && is_array($src['lines']) ? $src['lines'] : [];
+        foreach ($srcLines as $ln) {
+            $u = (float) ($ln['unit_amount'] ?? 0);
+            $linesIn[] = [
+                'description' => (string) ($ln['description'] ?? 'Credit'),
+                'quantity' => abs((float) ($ln['quantity'] ?? 1)) ?: 1.0,
+                'unit_amount' => $u > 0 ? -1 * $u : $u,
+                'tax_rate' => (float) ($ln['tax_rate'] ?? 0),
+            ];
+        }
+        if ($linesIn === []) {
+            throw new RuntimeException('Invoice has no lines to credit.');
+        }
+
+        $today = (new \DateTimeImmutable('today'))->format('Y-m-d');
+        $note = 'Credit note for ' . (string) ($src['invoice_number'] ?? '') . '.';
+        $clientId = isset($src['client_id']) ? (int) $src['client_id'] : null;
+        if ($clientId <= 0) {
+            $clientId = null;
+        }
+
+        return $this->create(
+            $organizationId,
+            $clientId,
+            $today,
+            null,
+            (string) ($src['currency'] ?? 'NGN'),
+            $note,
+            $linesIn,
+            'credit_note',
+            $sourceInvoiceId,
+        );
     }
 
     /**
@@ -206,6 +268,64 @@ final class InvoiceRepository
         return $stmt->rowCount() > 0;
     }
 
+    public function setGatewayPendingCheckout(int $invoiceId, int $organizationId, string $provider, string $checkoutRef): bool
+    {
+        $stmt = Database::pdo()->prepare(
+            'UPDATE invoices SET
+                payment_provider = :provider,
+                gateway_checkout_ref = :cref,
+                updated_at = CURRENT_TIMESTAMP
+             WHERE id = :id AND organization_id = :organization_id AND status = \'sent\' AND invoice_kind = \'invoice\''
+        );
+        $stmt->execute([
+            'provider' => $provider,
+            'cref' => $checkoutRef,
+            'id' => $invoiceId,
+            'organization_id' => $organizationId,
+        ]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function findByGatewayCheckoutRef(string $checkoutRef): ?array
+    {
+        $stmt = Database::pdo()->prepare(
+            'SELECT id, organization_id, status, invoice_kind, total FROM invoices
+             WHERE gateway_checkout_ref = :cref LIMIT 1'
+        );
+        $stmt->execute(['cref' => $checkoutRef]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row ?: null;
+    }
+
+    public function markPaidFromGateway(int $invoiceId, int $organizationId, string $transactionRef, string $provider): bool
+    {
+        $stmt = Database::pdo()->prepare(
+            'UPDATE invoices SET
+                status = \'paid\',
+                paid_at = CURRENT_TIMESTAMP,
+                gateway_transaction_ref = :tx,
+                payment_provider = COALESCE(payment_provider, :provider),
+                updated_at = CURRENT_TIMESTAMP
+             WHERE id = :id AND organization_id = :organization_id
+               AND status = \'sent\'
+               AND invoice_kind = \'invoice\'
+               AND total > 0'
+        );
+        $stmt->execute([
+            'id' => $invoiceId,
+            'organization_id' => $organizationId,
+            'tx' => $transactionRef,
+            'provider' => $provider,
+        ]);
+
+        return $stmt->rowCount() > 0;
+    }
+
     public function markSent(int $invoiceId, int $organizationId): bool
     {
         $stmt = Database::pdo()->prepare(
@@ -230,7 +350,8 @@ final class InvoiceRepository
                 paid_at = CURRENT_TIMESTAMP,
                 updated_at = CURRENT_TIMESTAMP
              WHERE id = :id AND organization_id = :organization_id
-               AND status = \'sent\''
+               AND status = \'sent\'
+               AND invoice_kind = \'invoice\''
         );
         $stmt->execute(['id' => $invoiceId, 'organization_id' => $organizationId]);
 

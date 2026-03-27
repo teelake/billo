@@ -51,6 +51,7 @@ ob_start();
                     <thead>
                     <tr>
                         <th>Number</th>
+                        <th>Type</th>
                         <th>Client</th>
                         <th>Status</th>
                         <th>Issue date</th>
@@ -71,9 +72,12 @@ ob_start();
                         }
                         $cur = (string) ($inv['currency'] ?? 'NGN');
                         $total = $inv['total'] ?? '0';
+                        $ik = (string) ($inv['invoice_kind'] ?? 'invoice');
+                        $typeLabel = $ik === 'credit_note' ? 'Credit' : 'Invoice';
                         ?>
                         <tr>
                             <td><strong><?= billo_e((string) ($inv['invoice_number'] ?? '')) ?></strong></td>
+                            <td><span class="status-pill status-pill--<?= $ik === 'credit_note' ? 'draft' : 'sent' ?>"><?= billo_e($typeLabel) ?></span></td>
                             <td><?= billo_e($clientLabel) ?></td>
                             <td><span class="status-pill status-pill--<?= billo_e($status) ?>"><?= billo_e($status) ?></span></td>
                             <td><?= billo_e((string) ($inv['issue_date'] ?? '')) ?></td>

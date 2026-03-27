@@ -14,6 +14,8 @@ use App\Repositories\InvoiceRepository;
 use App\Repositories\OrganizationRepository;
 use App\Services\EmailNotifications;
 use App\Services\InvoicePdfService;
+use App\Services\PaymentLinkService;
+use App\Services\StripeCheckoutService;
 
 final class InvoiceController extends Controller
 {
@@ -58,6 +60,18 @@ final class InvoiceController extends Controller
             $this->redirect('/invoices');
         }
 
+        $status = (string) ($invoice['status'] ?? '');
+        $payOnlineUrl = '';
+        $stripe = new StripeCheckoutService();
+        if (
+            $stripe->isConfigured()
+            && ($invoice['invoice_kind'] ?? 'invoice') === 'invoice'
+            && $status === 'sent'
+            && (float) ($invoice['total'] ?? 0) > 0
+        ) {
+            $payOnlineUrl = (new PaymentLinkService())->buildUrl($id, $ctx['organization_id']);
+        }
+
         View::render('invoices/show', [
             'invoice' => $invoice,
             'can_manage' => $this->canManageInvoices($ctx['role']),
@@ -66,6 +80,7 @@ final class InvoiceController extends Controller
             'show_team_nav' => in_array($ctx['role'], ['owner', 'admin'], true),
             'error' => Session::flash('error') ?? '',
             'success' => Session::flash('success') ?? '',
+            'pay_online_url' => $payOnlineUrl,
         ]);
     }
 
@@ -84,6 +99,7 @@ final class InvoiceController extends Controller
             'lines' => $this->defaultFormLines(),
             'clients' => $clientList,
             'is_edit' => false,
+            'is_credit_note' => false,
             'user_name' => (string) Session::get('user_name', ''),
             'role' => $ctx['role'],
             'show_team_nav' => in_array($ctx['role'], ['owner', 'admin'], true),
@@ -102,7 +118,7 @@ final class InvoiceController extends Controller
             $this->redirect('/invoices/create');
         }
 
-        $parsed = $this->validatedInvoicePayload($ctx['organization_id']);
+        $parsed = $this->validatedInvoicePayload($ctx['organization_id'], false);
         if (is_string($parsed)) {
             Session::flash('error', $parsed);
             $this->redirect('/invoices/create');
@@ -152,12 +168,14 @@ final class InvoiceController extends Controller
         }
 
         $clientList = $this->clients->listForOrganization($ctx['organization_id']);
+        $isCreditNote = ($invoice['invoice_kind'] ?? 'invoice') === 'credit_note';
 
         View::render('invoices/form', [
             'invoice' => $invoice,
             'lines' => $invoice['lines'] ?? [],
             'clients' => $clientList,
             'is_edit' => true,
+            'is_credit_note' => $isCreditNote,
             'user_name' => (string) Session::get('user_name', ''),
             'role' => $ctx['role'],
             'show_team_nav' => in_array($ctx['role'], ['owner', 'admin'], true),
@@ -183,7 +201,14 @@ final class InvoiceController extends Controller
         }
         $id = (int) $idRaw;
 
-        $parsed = $this->validatedInvoicePayload($ctx['organization_id']);
+        $existing = $this->invoices->findWithLines($id, $ctx['organization_id']);
+        if ($existing === null || ($existing['status'] ?? '') !== 'draft') {
+            Session::flash('error', 'Invoice not found or not a draft.');
+            $this->redirect('/invoices');
+        }
+        $isCreditNote = ($existing['invoice_kind'] ?? 'invoice') === 'credit_note';
+
+        $parsed = $this->validatedInvoicePayload($ctx['organization_id'], $isCreditNote);
         if (is_string($parsed)) {
             Session::flash('error', $parsed);
             $this->redirect('/invoices/edit?id=' . $id);
@@ -447,6 +472,34 @@ final class InvoiceController extends Controller
         $this->redirect('/invoices/show?id=' . $id);
     }
 
+    public function startCreditNote(): void
+    {
+        $ctx = $this->requireAuth();
+        if (!$this->canManageInvoices($ctx['role'])) {
+            $this->redirect('/invoices');
+        }
+        if (!$this->validateCsrf()) {
+            Session::flash('error', 'Invalid session. Please try again.');
+            $this->redirect('/invoices');
+        }
+
+        $id = $this->intIdFromRequest();
+        if ($id === null) {
+            Session::flash('error', 'Invalid invoice.');
+            $this->redirect('/invoices');
+        }
+
+        try {
+            $newId = $this->invoices->createCreditNoteFromSource($ctx['organization_id'], $id);
+        } catch (\RuntimeException $e) {
+            Session::flash('error', $e->getMessage());
+            $this->redirect('/invoices/show?id=' . $id);
+        }
+
+        Session::flash('success', 'Credit note draft created. Review line amounts (they should be negative) and send when ready.');
+        $this->redirect('/invoices/show?id=' . $newId);
+    }
+
     private function canManageInvoices(string $role): bool
     {
         return in_array($role, ['owner', 'admin', 'member'], true);
@@ -482,7 +535,7 @@ final class InvoiceController extends Controller
     /**
      * @return array{client_id:?int,issue_date:string,due_date:?string,currency:string,notes:?string,lines:list<array{description:string,quantity:float,unit_amount:float,tax_rate:float}>}|string
      */
-    private function validatedInvoicePayload(int $organizationId): array|string
+    private function validatedInvoicePayload(int $organizationId, bool $isCreditNote): array|string
     {
         $clientRaw = $this->request->input('client_id', '');
         $clientId = null;
@@ -528,7 +581,7 @@ final class InvoiceController extends Controller
 
         $notes = $this->trimOrNull($this->request->input('notes', ''), 65535);
 
-        $linesResult = $this->parsePostedLines();
+        $linesResult = $this->parsePostedLines($isCreditNote);
         if (is_string($linesResult)) {
             return $linesResult;
         }
@@ -546,7 +599,7 @@ final class InvoiceController extends Controller
     /**
      * @return list<array{description:string,quantity:float,unit_amount:float,tax_rate:float}>|string
      */
-    private function parsePostedLines(): array|string
+    private function parsePostedLines(bool $isCreditNote): array|string
     {
         $raw = $_POST['lines'] ?? null;
         if (!is_array($raw)) {
@@ -582,8 +635,12 @@ final class InvoiceController extends Controller
             if ($qty <= 0) {
                 return 'Quantity must be greater than zero.';
             }
-            if ($unit < 0) {
-                return 'Unit price cannot be negative.';
+            if ($isCreditNote) {
+                if ($unit >= 0) {
+                    return 'Credit note line unit amounts must be negative.';
+                }
+            } elseif ($unit < 0) {
+                return 'Unit price cannot be negative on a standard invoice.';
             }
             if ($tax < 0 || $tax > 100) {
                 return 'Tax rate must be between 0 and 100.';

@@ -68,6 +68,25 @@ final class PlatformSettings
             $patch['mail']['from_name'] = $v;
         }
 
+        $landing = [];
+        foreach ($rows as $rowKey => $rowVal) {
+            $k = (string) $rowKey;
+            if (!str_starts_with($k, 'landing.')) {
+                continue;
+            }
+            $sub = substr($k, strlen('landing.'));
+            if ($sub === '') {
+                continue;
+            }
+            $val = trim((string) $rowVal);
+            if ($val !== '') {
+                $landing[$sub] = $val;
+            }
+        }
+        if ($landing !== []) {
+            $patch['landing'] = $landing;
+        }
+
         if ($patch !== []) {
             Config::extend($patch);
         }
