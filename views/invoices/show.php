@@ -4,6 +4,7 @@ declare(strict_types=1);
 use App\Core\Csrf;
 
 /** @var array<string, mixed> $invoice */
+/** @var array<string, mixed> $organization */
 /** @var bool $can_manage */
 /** @var string $user_name */
 /** @var string $role */
@@ -20,6 +21,8 @@ $invId = (int) ($invoice['id'] ?? 0);
 $currency = (string) ($invoice['currency'] ?? 'NGN');
 /** @var list<array<string, mixed>> $lines */
 $lines = isset($invoice['lines']) && is_array($invoice['lines']) ? $invoice['lines'] : [];
+$org = isset($organization) && is_array($organization) ? $organization : [];
+$hideTax = $org !== [] && billo_invoice_hide_tax_column($org, $invoice);
 $title = ($invoice['invoice_number'] ?? 'Invoice') . ' — billo';
 ob_start();
 ?>
@@ -82,13 +85,15 @@ ob_start();
             </div>
 
             <div class="welcome-card invoice-detail-card" style="padding:0;overflow:hidden">
-                <table class="data-table data-table--comfortable">
+                <table class="data-table data-table--comfortable<?= $hideTax ? ' invoice-table--no-tax' : '' ?>">
                     <thead>
                     <tr>
                         <th>Description</th>
                         <th class="num">Qty</th>
                         <th class="num">Unit</th>
-                        <th class="num">Tax %</th>
+                        <?php if (!$hideTax): ?>
+                            <th class="num">Tax %</th>
+                        <?php endif; ?>
                         <th class="num">Line total</th>
                     </tr>
                     </thead>
@@ -98,7 +103,9 @@ ob_start();
                             <td><?= billo_e((string) ($ln['description'] ?? '')) ?></td>
                             <td class="num"><?= billo_e(rtrim(rtrim(sprintf('%.4f', (float) ($ln['quantity'] ?? 0)), '0'), '.') ?: '0') ?></td>
                             <td class="num"><?= billo_e($currency) ?>&nbsp;<?= billo_e(number_format((float) ($ln['unit_amount'] ?? 0), 2)) ?></td>
-                            <td class="num"><?= billo_e(number_format((float) ($ln['tax_rate'] ?? 0), 2)) ?></td>
+                            <?php if (!$hideTax): ?>
+                                <td class="num"><?= billo_e(number_format((float) ($ln['tax_rate'] ?? 0), 2)) ?></td>
+                            <?php endif; ?>
                             <td class="num"><strong><?= billo_e($currency) ?>&nbsp;<?= billo_e(number_format((float) ($ln['line_total'] ?? 0), 2)) ?></strong></td>
                         </tr>
                     <?php endforeach; ?>
@@ -106,7 +113,9 @@ ob_start();
                 </table>
                 <div class="invoice-totals">
                     <div class="invoice-totals__row"><span>Subtotal</span><span><?= billo_e($currency) ?> <?= billo_e(number_format((float) ($invoice['subtotal'] ?? 0), 2)) ?></span></div>
-                    <div class="invoice-totals__row"><span>Tax</span><span><?= billo_e($currency) ?> <?= billo_e(number_format((float) ($invoice['tax_total'] ?? 0), 2)) ?></span></div>
+                    <?php if (!$hideTax): ?>
+                        <div class="invoice-totals__row"><span>Tax</span><span><?= billo_e($currency) ?> <?= billo_e(number_format((float) ($invoice['tax_total'] ?? 0), 2)) ?></span></div>
+                    <?php endif; ?>
                     <div class="invoice-totals__row invoice-totals__row--total"><span>Total</span><span><?= billo_e($currency) ?> <?= billo_e(number_format((float) ($invoice['total'] ?? 0), 2)) ?></span></div>
                 </div>
             </div>

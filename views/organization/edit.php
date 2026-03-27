@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 use App\Core\Csrf;
+use App\Support\InvoiceTheme;
 
 /** @var array<string, mixed> $organization */
 /** @var string $user_name */
@@ -9,6 +10,7 @@ use App\Core\Csrf;
 /** @var bool $show_team_nav */
 /** @var string $error */
 /** @var string $success */
+/** @var list<array{code: string, name: string}>|mixed $nigerian_banks */
 
 $error = $error ?? '';
 $success = $success ?? '';
@@ -20,6 +22,21 @@ $val = static function (string $key) use ($o): string {
 };
 $logoDisplayUrl = billo_organization_logo_display_url($o);
 $hasStoredLogo = $logoDisplayUrl !== null;
+$invoiceTaxOn = !isset($o['invoice_tax_enabled']) || (int) ($o['invoice_tax_enabled'] ?? 1) === 1;
+$invoiceStyleCurrent = InvoiceTheme::normalizeStyle($val('invoice_style'));
+$brandPrimary = $val('invoice_brand_primary') !== '' ? $val('invoice_brand_primary') : '#1E3A8A';
+$brandAccent = $val('invoice_brand_accent') !== '' ? $val('invoice_brand_accent') : '#16A34A';
+$styleLabels = [
+    'modern' => 'Modern',
+    'professional' => 'Professional',
+    'premium' => 'Premium',
+    'minimal' => 'Minimal',
+];
+$nigerian_banks = isset($nigerian_banks) && is_array($nigerian_banks) ? $nigerian_banks : [];
+$banksJson = json_encode($nigerian_banks, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
+if ($banksJson === false) {
+    $banksJson = '[]';
+}
 
 $title = 'Business details — billo';
 ob_start();
@@ -113,10 +130,74 @@ ob_start();
                     <textarea class="input input--textarea" id="invoice_footer" name="invoice_footer" rows="4" placeholder="Bank details, payment terms, registration footnotes…"><?= billo_e($val('invoice_footer')) ?></textarea>
                 </div>
 
+                <div class="org-bank-block">
+                    <h2 class="org-invoicing-block__title">Bank details</h2>
+                    <p class="hint org-invoicing-block__lead">Shown on invoice PDF, print, and the invoice page. Fields are optional if you prefer to describe payment only in the footer.</p>
+
+                    <div class="field billo-combobox" data-billo-bank-combobox>
+                        <label class="label" for="invoice_bank_name">Bank</label>
+                        <input type="hidden" name="invoice_bank_code" id="invoice_bank_code" value="<?= billo_e($val('invoice_bank_code')) ?>">
+                        <input class="input billo-combobox__search" type="text" name="invoice_bank_name" id="invoice_bank_name" maxlength="160" value="<?= billo_e($val('invoice_bank_name')) ?>" placeholder="Search Nigerian banks or type any name" autocomplete="off">
+                        <ul class="billo-combobox__list" id="org-bank-suggestions" role="listbox" hidden></ul>
+                        <p class="hint">If <strong>payments.paystack.secret_key</strong> is set in config, the dropdown list is loaded from Paystack (cached 24h); otherwise a built‑in list is used.</p>
+                    </div>
+                    <div class="field-grid">
+                        <div class="field">
+                            <label class="label" for="invoice_bank_account_name">Account name</label>
+                            <input class="input" id="invoice_bank_account_name" name="invoice_bank_account_name" maxlength="160" value="<?= billo_e($val('invoice_bank_account_name')) ?>" autocomplete="off">
+                        </div>
+                        <div class="field">
+                            <label class="label" for="invoice_bank_account_number">Account number</label>
+                            <input class="input" id="invoice_bank_account_number" name="invoice_bank_account_number" maxlength="32" inputmode="numeric" pattern="[0-9\s]*" value="<?= billo_e($val('invoice_bank_account_number')) ?>" autocomplete="off">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="org-invoicing-block">
+                    <h2 class="org-invoicing-block__title">Invoicing &amp; PDF</h2>
+                    <p class="hint org-invoicing-block__lead">These settings apply to new and existing invoices: print view, PDF download, and the line-item editor.</p>
+
+                    <div class="field-toggle">
+                        <div class="field-toggle__text">
+                            <strong class="field-toggle__label">Tax on invoices</strong>
+                            <p class="hint" style="margin:0.35rem 0 0">When off, tax columns and totals are hidden (lines save with 0% tax). Turn off if you do not charge VAT or similar on this workspace.</p>
+                        </div>
+                        <label class="field-toggle__control">
+                            <input type="checkbox" name="invoice_tax_enabled" value="1" class="field-toggle__input" <?= $invoiceTaxOn ? ' checked' : '' ?>>
+                            <span class="field-toggle__track" aria-hidden="true"><span class="field-toggle__thumb"></span></span>
+                            <span class="sr-only">Enable tax on invoices</span>
+                        </label>
+                    </div>
+
+                    <div class="field">
+                        <label class="label" for="invoice_style">Invoice style</label>
+                        <select class="input" id="invoice_style" name="invoice_style">
+                            <?php foreach (InvoiceTheme::STYLES as $st): ?>
+                                <option value="<?= billo_e($st) ?>"<?= $st === $invoiceStyleCurrent ? ' selected' : '' ?>><?= billo_e($styleLabels[$st] ?? ucfirst($st)) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="hint">Layout emphasis for PDF and print (headings, table header, accents).</p>
+                    </div>
+
+                    <div class="field-grid org-brand-colors">
+                        <div class="field">
+                            <label class="label" for="invoice_brand_primary">Primary brand color</label>
+                            <input class="input org-brand-colors__picker" type="color" id="invoice_brand_primary" name="invoice_brand_primary" value="<?= billo_e($brandPrimary) ?>">
+                            <p class="hint">Titles, totals, and main accents.</p>
+                        </div>
+                        <div class="field">
+                            <label class="label" for="invoice_brand_accent">Accent color</label>
+                            <input class="input org-brand-colors__picker" type="color" id="invoice_brand_accent" name="invoice_brand_accent" value="<?= billo_e($brandAccent) ?>">
+                            <p class="hint">Highlights, borders, and secondary accents.</p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-actions">
                     <button type="submit" class="btn btn--primary">Save</button>
                 </div>
             </form>
+            <script type="application/json" id="billo-ng-banks-data"><?= $banksJson ?></script>
         </div>
     </div>
 </section>

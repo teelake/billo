@@ -26,9 +26,14 @@
 /** Invoice line editor: add/remove rows, assign indexed `lines[n][field]` names */
 (function () {
     const tbody = document.querySelector("[data-invoice-lines]");
-    const tpl = document.getElementById("invoice-line-empty-row");
     const addBtn = document.getElementById("invoice-add-line");
-    if (!tbody || !tpl || !addBtn || !(tpl instanceof HTMLTemplateElement)) {
+    if (!tbody || !addBtn) {
+        return;
+    }
+    const taxOn = tbody.dataset.taxEnabled !== "0";
+    const tplId = taxOn ? "invoice-line-empty-row" : "invoice-line-empty-row-no-tax";
+    const tpl = document.getElementById(tplId);
+    if (!tpl || !(tpl instanceof HTMLTemplateElement)) {
         return;
     }
 

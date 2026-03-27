@@ -25,12 +25,37 @@ $dueVal = $is_edit ? (string) ($inv['due_date'] ?? '') : '';
 $currencyVal = $is_edit ? (string) ($inv['currency'] ?? 'NGN') : 'NGN';
 $notesVal = $is_edit ? (string) ($inv['notes'] ?? '') : '';
 $clientIdVal = $is_edit && !empty($inv['client_id']) ? (string) (int) $inv['client_id'] : '';
+$selectedClientLabel = '';
+$clientsForCombo = [];
+foreach ($clients as $cl) {
+    if (!is_array($cl)) {
+        continue;
+    }
+    $cid = (int) ($cl['id'] ?? 0);
+    if ($cid <= 0) {
+        continue;
+    }
+    $nm = (string) ($cl['name'] ?? '');
+    $clientsForCombo[] = [
+        'id' => $cid,
+        'name' => $nm,
+        'email' => isset($cl['email']) ? (string) $cl['email'] : '',
+    ];
+    if ($clientIdVal !== '' && (string) $cid === $clientIdVal) {
+        $selectedClientLabel = $nm;
+    }
+}
+$clientsJson = json_encode($clientsForCombo, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
+if ($clientsJson === false) {
+    $clientsJson = '[]';
+}
 
 $lineList = array_values(array_filter($lines, static fn ($r) => is_array($r)));
 if ($lineList === []) {
     $lineList = [['description' => '', 'quantity' => '1', 'unit_amount' => '', 'tax_rate' => '0']];
 }
 $rowCount = count($lineList);
+$invoiceTaxEnabled = (bool) ($invoice_tax_enabled ?? true);
 
 $title = ($is_credit_note ? 'Edit credit note' : ($is_edit ? 'Edit invoice' : 'New invoice')) . ' — billo';
 ob_start();
@@ -72,15 +97,12 @@ ob_start();
                 <?php endif; ?>
 
                 <div class="field-grid">
-                    <div class="field">
-                        <label class="label" for="client_id">Client</label>
-                        <select class="input" id="client_id" name="client_id">
-                            <option value="">— Optional for drafts —</option>
-                            <?php foreach ($clients as $cl): ?>
-                                <?php $cid = (int) ($cl['id'] ?? 0); ?>
-                                <option value="<?= $cid ?>"<?= (string) $cid === $clientIdVal ? ' selected' : '' ?>><?= billo_e((string) ($cl['name'] ?? '')) ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                    <div class="field billo-combobox" data-billo-client-combobox>
+                        <label class="label" for="invoice_client_search">Client</label>
+                        <input type="hidden" name="client_id" id="client_id" value="<?= billo_e($clientIdVal) ?>">
+                        <input class="input billo-combobox__search" type="search" id="invoice_client_search" autocomplete="off" placeholder="Search by name or email…" value="<?= billo_e($selectedClientLabel) ?>">
+                        <ul class="billo-combobox__list" id="invoice-client-suggestions" role="listbox" hidden></ul>
+                        <p class="hint">Optional for drafts. Type to filter; click a row to select. Clear the box to remove the client.</p>
                     </div>
                     <div class="field">
                         <label class="label" for="issue_date">Issue date <span class="label__req">*</span></label>
@@ -115,17 +137,19 @@ ob_start();
                         <button type="button" class="btn btn--secondary btn--sm" id="invoice-add-line">Add line</button>
                     </div>
                     <div class="table-wrap invoice-lines-table-wrap">
-                        <table class="data-table invoice-lines-table">
+                        <table class="data-table invoice-lines-table<?= $invoiceTaxEnabled ? '' : ' invoice-lines-table--no-tax' ?>">
                             <thead>
                             <tr>
                                 <th>Description</th>
                                 <th style="width:5.5rem">Qty</th>
                                 <th style="width:6.5rem"><?= $is_credit_note ? 'Unit (negative)' : 'Unit' ?></th>
-                                <th style="width:5rem">Tax %</th>
+                                <?php if ($invoiceTaxEnabled): ?>
+                                    <th style="width:5rem">Tax %</th>
+                                <?php endif; ?>
                                 <th style="width:3rem"></th>
                             </tr>
                             </thead>
-                            <tbody data-invoice-lines data-next-index="<?= $rowCount ?>">
+                            <tbody data-invoice-lines data-tax-enabled="<?= $invoiceTaxEnabled ? '1' : '0' ?>" data-next-index="<?= $rowCount ?>">
                             <?php foreach ($lineList as $i => $row): ?>
                                 <?php
                                 $d = isset($row['description']) ? (string) $row['description'] : '';
@@ -178,6 +202,7 @@ ob_start();
             </form>
         </div>
     </div>
+    <script type="application/json" id="billo-invoice-clients-data"><?= $clientsJson ?></script>
 </section>
 
 <template id="invoice-line-empty-row">
@@ -199,6 +224,26 @@ ob_start();
             <input class="input input--sm" data-line-field="tax_rate" inputmode="decimal" value="0">
         </td>
         <td class="invoice-line-actions">
+            <button type="button" class="btn btn--ghost btn--sm invoice-line-remove" title="Remove row" aria-label="Remove row">×</button>
+        </td>
+    </tr>
+</template>
+<template id="invoice-line-empty-row-no-tax">
+    <tr data-invoice-line>
+        <td>
+            <label class="sr-only">Description</label>
+            <input class="input input--sm" data-line-field="description" maxlength="500" value="" placeholder="Description">
+        </td>
+        <td>
+            <label class="sr-only">Qty</label>
+            <input class="input input--sm" data-line-field="quantity" inputmode="decimal" value="1">
+        </td>
+        <td>
+            <label class="sr-only">Unit price</label>
+            <input class="input input--sm" data-line-field="unit_amount" inputmode="decimal" value="">
+        </td>
+        <td class="invoice-line-actions">
+            <input type="hidden" data-line-field="tax_rate" value="0">
             <button type="button" class="btn btn--ghost btn--sm invoice-line-remove" title="Remove row" aria-label="Remove row">×</button>
         </td>
     </tr>

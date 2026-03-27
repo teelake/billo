@@ -10,6 +10,7 @@ use App\Core\Request;
 use App\Core\Session;
 use App\Core\View;
 use App\Repositories\OrganizationRepository;
+use App\Services\NigerianBankListService;
 use App\Services\OrganizationLogoService;
 use App\Support\InvoiceTheme;
 use App\Support\OrganizationIdentityNormalizer;
@@ -34,6 +35,7 @@ final class OrganizationController extends Controller
 
         View::render('organization/edit', [
             'organization' => $org,
+            'nigerian_banks' => NigerianBankListService::banks(),
             'user_name' => (string) Session::get('user_name', ''),
             'role' => $ctx['role'],
             'show_team_nav' => true,
@@ -240,6 +242,29 @@ final class OrganizationController extends Controller
         $brandPrimary = strtoupper($rawPrimary !== '' ? $rawPrimary : '#1E3A8A');
         $brandAccent = strtoupper($rawAccent !== '' ? $rawAccent : '#16A34A');
 
+        $bankName = $this->trimOrNull($this->request->input('invoice_bank_name', ''), 160);
+        $bankCodeRaw = trim((string) ($this->request->input('invoice_bank_code', '') ?? ''));
+        if (strlen($bankCodeRaw) > 12) {
+            return 'Bank code is too long.';
+        }
+        if ($bankCodeRaw !== '' && preg_match('/^[A-Za-z0-9]+$/', $bankCodeRaw) !== 1) {
+            return 'Bank code must be letters and numbers only.';
+        }
+        $bankCode = $bankCodeRaw !== '' ? $bankCodeRaw : null;
+        $acctHolder = $this->trimOrNull($this->request->input('invoice_bank_account_name', ''), 160);
+        $rawAcct = preg_replace('/\s+/', '', (string) ($this->request->input('invoice_bank_account_number', '') ?? ''));
+        $acctNum = $rawAcct !== '' ? $rawAcct : null;
+        if ($acctNum !== null && preg_match('/^\d{8,20}$/', $acctNum) !== 1) {
+            return 'Account number must be digits only (8–20 characters).';
+        }
+        $hasAcct = $acctHolder !== null || $acctNum !== null;
+        if ($hasAcct && $bankName === null) {
+            return 'Enter the bank name when account details are provided.';
+        }
+        if ($bankName === null) {
+            $bankCode = null;
+        }
+
         return [
             'legal_name' => $legal,
             'billing_address_line1' => $l1,
@@ -254,6 +279,10 @@ final class OrganizationController extends Controller
             'company_website' => $website,
             'company_website_host' => $websiteHost,
             'invoice_footer' => $footer,
+            'invoice_bank_name' => $bankName,
+            'invoice_bank_code' => $bankCode,
+            'invoice_bank_account_name' => $acctHolder,
+            'invoice_bank_account_number' => $acctNum,
             'invoice_logo_url' => $logo,
             'invoice_tax_enabled' => $invoiceTaxEnabled,
             'invoice_style' => $invoiceStyle,

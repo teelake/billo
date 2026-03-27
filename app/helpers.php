@@ -153,6 +153,31 @@ function billo_invoice_hide_tax_column(array $organization, array $invoice): boo
     return abs((float) ($invoice['tax_total'] ?? 0)) < 0.00001;
 }
 
+/**
+ * Human-readable bank transfer lines from organization branding (PDF / print / show).
+ *
+ * @param array<string, mixed> $organization
+ * @return list<string>
+ */
+function billo_organization_bank_detail_lines(array $organization): array
+{
+    $lines = [];
+    $bank = trim((string) ($organization['invoice_bank_name'] ?? ''));
+    if ($bank !== '') {
+        $lines[] = 'Bank: ' . $bank;
+    }
+    $acctName = trim((string) ($organization['invoice_bank_account_name'] ?? ''));
+    if ($acctName !== '') {
+        $lines[] = 'Account name: ' . $acctName;
+    }
+    $acctNum = trim((string) ($organization['invoice_bank_account_number'] ?? ''));
+    if ($acctNum !== '') {
+        $lines[] = 'Account number: ' . $acctNum;
+    }
+
+    return $lines;
+}
+
 function billo_organization_logo_display_url(?array $organization): ?string
 {
     if ($organization === null) {

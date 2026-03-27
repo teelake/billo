@@ -71,8 +71,11 @@ final class InvoiceController extends Controller
             $payOnlineUrl = (new PaymentLinkService())->buildUrl($id, $ctx['organization_id']);
         }
 
+        $orgRow = $this->organizations->findById($ctx['organization_id']) ?? [];
+
         View::render('invoices/show', [
             'invoice' => $invoice,
+            'organization' => $orgRow,
             'can_manage' => $this->canManageInvoices($ctx['role']),
             'user_name' => (string) Session::get('user_name', ''),
             'role' => $ctx['role'],
@@ -92,13 +95,17 @@ final class InvoiceController extends Controller
         }
 
         $clientList = $this->clients->listForOrganization($ctx['organization_id']);
+        $orgRow = $this->organizations->findById($ctx['organization_id']) ?? [];
 
         View::render('invoices/form', [
             'invoice' => null,
-            'lines' => $this->defaultFormLines(),
+            'lines' => (int) ($orgRow['invoice_tax_enabled'] ?? 1) === 1
+                ? $this->defaultFormLines()
+                : $this->defaultFormLinesNoTax(),
             'clients' => $clientList,
             'is_edit' => false,
             'is_credit_note' => false,
+            'invoice_tax_enabled' => (int) ($orgRow['invoice_tax_enabled'] ?? 1) === 1,
             'user_name' => (string) Session::get('user_name', ''),
             'role' => $ctx['role'],
             'show_team_nav' => in_array($ctx['role'], ['owner', 'admin'], true),
@@ -168,6 +175,7 @@ final class InvoiceController extends Controller
 
         $clientList = $this->clients->listForOrganization($ctx['organization_id']);
         $isCreditNote = ($invoice['invoice_kind'] ?? 'invoice') === 'credit_note';
+        $orgRow = $this->organizations->findById($ctx['organization_id']) ?? [];
 
         View::render('invoices/form', [
             'invoice' => $invoice,
@@ -175,6 +183,7 @@ final class InvoiceController extends Controller
             'clients' => $clientList,
             'is_edit' => true,
             'is_credit_note' => $isCreditNote,
+            'invoice_tax_enabled' => (int) ($orgRow['invoice_tax_enabled'] ?? 1) === 1,
             'user_name' => (string) Session::get('user_name', ''),
             'role' => $ctx['role'],
             'show_team_nav' => in_array($ctx['role'], ['owner', 'admin'], true),
@@ -531,11 +540,24 @@ final class InvoiceController extends Controller
         ];
     }
 
+    /** @return list<array<string, string>> */
+    private function defaultFormLinesNoTax(): array
+    {
+        return [
+            ['description' => '', 'quantity' => '1', 'unit_amount' => '', 'tax_rate' => '0'],
+            ['description' => '', 'quantity' => '1', 'unit_amount' => '', 'tax_rate' => '0'],
+            ['description' => '', 'quantity' => '1', 'unit_amount' => '', 'tax_rate' => '0'],
+        ];
+    }
+
     /**
      * @return array{client_id:?int,issue_date:string,due_date:?string,currency:string,notes:?string,lines:list<array{description:string,quantity:float,unit_amount:float,tax_rate:float}>}|string
      */
     private function validatedInvoicePayload(int $organizationId, bool $isCreditNote): array|string
     {
+        $org = $this->organizations->findById($organizationId) ?? [];
+        $taxEnabled = (int) ($org['invoice_tax_enabled'] ?? 1) === 1;
+
         $clientRaw = $this->request->input('client_id', '');
         $clientId = null;
         if ($clientRaw !== null && $clientRaw !== '') {
@@ -580,7 +602,7 @@ final class InvoiceController extends Controller
 
         $notes = $this->trimOrNull($this->request->input('notes', ''), 65535);
 
-        $linesResult = $this->parsePostedLines($isCreditNote);
+        $linesResult = $this->parsePostedLines($isCreditNote, $taxEnabled);
         if (is_string($linesResult)) {
             return $linesResult;
         }
@@ -598,7 +620,7 @@ final class InvoiceController extends Controller
     /**
      * @return list<array{description:string,quantity:float,unit_amount:float,tax_rate:float}>|string
      */
-    private function parsePostedLines(bool $isCreditNote): array|string
+    private function parsePostedLines(bool $isCreditNote, bool $taxEnabled): array|string
     {
         $raw = $_POST['lines'] ?? null;
         if (!is_array($raw)) {
@@ -630,6 +652,9 @@ final class InvoiceController extends Controller
             $qty = (float) $qtyStr;
             $unit = (float) $unitStr;
             $tax = (float) $taxStr;
+            if (!$taxEnabled) {
+                $tax = 0.0;
+            }
 
             if ($qty <= 0) {
                 return 'Quantity must be greater than zero.';
@@ -641,7 +666,7 @@ final class InvoiceController extends Controller
             } elseif ($unit < 0) {
                 return 'Unit price cannot be negative on a standard invoice.';
             }
-            if ($tax < 0 || $tax > 100) {
+            if ($taxEnabled && ($tax < 0 || $tax > 100)) {
                 return 'Tax rate must be between 0 and 100.';
             }
 

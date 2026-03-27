@@ -14,6 +14,8 @@ $num = (string) ($invoice['invoice_number'] ?? 'Invoice');
 /** @var list<array<string, mixed>> $lines */
 $lines = isset($invoice['lines']) && is_array($invoice['lines']) ? $invoice['lines'] : [];
 $title = $num . ' — ' . $orgName;
+$T = \App\Support\InvoiceTheme::tokens($org);
+$hideTax = billo_invoice_hide_tax_column($org, $invoice);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -62,9 +64,23 @@ $title = $num . ' — ' . $orgName;
             body { background: #fff; }
             .sheet { padding-top: 0.5rem; }
         }
+        .invoice-print .sheet { background: <?= billo_e($T['sheet_bg']) ?>; }
+        .invoice-print--premium .sheet { border-left: 4px solid <?= billo_e($T['accent']) ?>; padding-left: 1.25rem; margin-left: 0; }
+        .invoice-print .doc-label { color: <?= billo_e($T['doc_label_accent']) ?>; }
+        .invoice-print .org { color: <?= billo_e($T['primary']) ?>; }
+        .invoice-print h1 { color: <?= billo_e($T['primary']) ?>; font-size: <?= billo_e($T['title_size']) ?>; }
+        .invoice-print .lines th {
+            background: <?= billo_e($T['thead_bg']) ?>;
+            color: <?= billo_e($T['thead_color']) ?>;
+            border-bottom-color: <?= billo_e($T['thead_border']) ?>;
+        }
+        .invoice-print .lines td { border-bottom-color: <?= billo_e($T['cell_border']) ?>; }
+        .invoice-print .totals-row.total { color: <?= billo_e($T['primary']) ?>; border-top-color: <?= billo_e($T['accent']) ?>; }
+        .invoice-print .toolbar a { color: <?= billo_e($T['primary']) ?>; }
+        .invoice-print .toolbar button { background: <?= billo_e($T['accent']) ?>; }
     </style>
 </head>
-<body>
+<body class="invoice-print invoice-print--<?= billo_e($T['style']) ?>">
 <div class="toolbar no-print">
     <a href="<?= billo_e(billo_url('/invoices/show?id=' . (int) ($invoice['id'] ?? 0))) ?>">← Back to invoice</a>
     <?php if (class_exists(\Dompdf\Dompdf::class)): ?>
@@ -145,7 +161,9 @@ $title = $num . ' — ' . $orgName;
             <th>Description</th>
             <th class="num">Qty</th>
             <th class="num">Unit</th>
-            <th class="num">Tax %</th>
+            <?php if (!$hideTax): ?>
+                <th class="num">Tax %</th>
+            <?php endif; ?>
             <th class="num">Line total</th>
         </tr>
         </thead>
@@ -155,7 +173,9 @@ $title = $num . ' — ' . $orgName;
                 <td><?= billo_e((string) ($ln['description'] ?? '')) ?></td>
                 <td class="num"><?= billo_e(rtrim(rtrim(sprintf('%.4f', (float) ($ln['quantity'] ?? 0)), '0'), '.') ?: '0') ?></td>
                 <td class="num"><?= billo_e($currency) ?> <?= billo_e(number_format((float) ($ln['unit_amount'] ?? 0), 2)) ?></td>
-                <td class="num"><?= billo_e(number_format((float) ($ln['tax_rate'] ?? 0), 2)) ?></td>
+                <?php if (!$hideTax): ?>
+                    <td class="num"><?= billo_e(number_format((float) ($ln['tax_rate'] ?? 0), 2)) ?></td>
+                <?php endif; ?>
                 <td class="num"><strong><?= billo_e($currency) ?> <?= billo_e(number_format((float) ($ln['line_total'] ?? 0), 2)) ?></strong></td>
             </tr>
         <?php endforeach; ?>
@@ -164,7 +184,9 @@ $title = $num . ' — ' . $orgName;
 
     <div class="totals">
         <div class="totals-row"><span>Subtotal</span><span><?= billo_e($currency) ?> <?= billo_e(number_format((float) ($invoice['subtotal'] ?? 0), 2)) ?></span></div>
-        <div class="totals-row"><span>Tax</span><span><?= billo_e($currency) ?> <?= billo_e(number_format((float) ($invoice['tax_total'] ?? 0), 2)) ?></span></div>
+        <?php if (!$hideTax): ?>
+            <div class="totals-row"><span>Tax</span><span><?= billo_e($currency) ?> <?= billo_e(number_format((float) ($invoice['tax_total'] ?? 0), 2)) ?></span></div>
+        <?php endif; ?>
         <div class="totals-row total"><span>Total</span><span><?= billo_e($currency) ?> <?= billo_e(number_format((float) ($invoice['total'] ?? 0), 2)) ?></span></div>
     </div>
 
