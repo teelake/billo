@@ -2,10 +2,17 @@
     Require all granted
 </IfModule>
 
+# Security: do not list directories
+Options -Indexes
+DirectoryIndex index.php
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    # Subfolder install: set to your public URL path (e.g. /billo) — must match config app.base_path
-    RewriteBase /billo/
+    # MUST match the URL path to this folder (no trailing slash). Examples:
+    #   Site is https://example.com/billo/  →  RewriteBase /billo
+    #   Site is https://example.com/       →  RewriteBase /
+    # If you get host 404s, try commenting RewriteBase entirely (some hosts set it automatically).
+    RewriteBase /billo
 
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d
@@ -13,6 +20,3 @@
 
     RewriteRule ^ index.php [L]
 </IfModule>
-
-# Security: do not list directories
-Options -Indexes
