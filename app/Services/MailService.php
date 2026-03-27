@@ -8,8 +8,16 @@ use App\Core\Config;
 
 final class MailService
 {
-    public function send(string $to, string $subject, string $htmlBody, string $textBody): bool
-    {
+    /**
+     * @param list<array{filename:string,content:string,mime:string}>|null $attachments
+     */
+    public function send(
+        string $to,
+        string $subject,
+        string $htmlBody,
+        string $textBody,
+        ?array $attachments = null,
+    ): bool {
         $to = trim($to);
         if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
             return false;
@@ -18,14 +26,18 @@ final class MailService
         $driver = (string) Config::get('mail.driver', 'log');
         $fromAddr = (string) Config::get('mail.from_address', 'noreply@example.com');
         $fromName = (string) Config::get('mail.from_name', 'billo');
+        $atts = $this->normalizeAttachments($attachments);
 
         return match ($driver) {
-            'smtp' => $this->sendViaSmtp($to, $subject, $htmlBody, $textBody, $fromAddr, $fromName),
-            'mail' => $this->sendViaPhpMail($to, $subject, $htmlBody, $textBody, $fromAddr, $fromName),
-            default => $this->sendViaLog($to, $subject, $htmlBody, $textBody, $fromAddr, $fromName),
+            'smtp' => $this->sendViaSmtp($to, $subject, $htmlBody, $textBody, $fromAddr, $fromName, $atts),
+            'mail' => $this->sendViaPhpMail($to, $subject, $htmlBody, $textBody, $fromAddr, $fromName, $atts),
+            default => $this->sendViaLog($to, $subject, $htmlBody, $textBody, $fromAddr, $fromName, $atts),
         };
     }
 
+    /**
+     * @param list<array{filename:string,content:string,mime:string}> $attachments
+     */
     private function sendViaLog(
         string $to,
         string $subject,
@@ -33,17 +45,25 @@ final class MailService
         string $textBody,
         string $fromAddr,
         string $fromName,
+        array $attachments,
     ): bool {
         $line = str_repeat('=', 60) . PHP_EOL
             . date('c') . PHP_EOL
             . "From: {$fromName} <{$fromAddr}>" . PHP_EOL
             . "To: {$to}" . PHP_EOL
-            . "Subject: {$subject}" . PHP_EOL . PHP_EOL
-            . $textBody . PHP_EOL . PHP_EOL;
+            . "Subject: {$subject}" . PHP_EOL;
+        foreach ($attachments as $a) {
+            $line .= 'Attachment: ' . $a['filename'] . ' (' . strlen($a['content']) . " bytes)\n";
+        }
+        $line .= PHP_EOL . $textBody . PHP_EOL . PHP_EOL;
         $path = dirname(__DIR__, 2) . '/storage/logs/mail.log';
+
         return @file_put_contents($path, $line, FILE_APPEND | LOCK_EX) !== false;
     }
 
+    /**
+     * @param list<array{filename:string,content:string,mime:string}> $attachments
+     */
     private function sendViaPhpMail(
         string $to,
         string $subject,
@@ -51,26 +71,62 @@ final class MailService
         string $textBody,
         string $fromAddr,
         string $fromName,
+        array $attachments,
     ): bool {
-        $boundary = 'billo_' . bin2hex(random_bytes(8));
+        if ($attachments === []) {
+            $boundary = 'billo_' . bin2hex(random_bytes(8));
+            $headers = [];
+            $headers[] = 'MIME-Version: 1.0';
+            $headers[] = 'Content-Type: multipart/alternative; boundary="' . $boundary . '"';
+            $headers[] = 'From: ' . $this->encodeHeaderName($fromName) . " <{$fromAddr}>";
+            $headers[] = 'Reply-To: ' . $fromAddr;
+            $headers[] = 'X-Mailer: billo';
+
+            $body = "--{$boundary}\r\n";
+            $body .= "Content-Type: text/plain; charset=UTF-8\r\n\r\n";
+            $body .= $textBody . "\r\n\r\n";
+            $body .= "--{$boundary}\r\n";
+            $body .= "Content-Type: text/html; charset=UTF-8\r\n\r\n";
+            $body .= $htmlBody . "\r\n\r\n";
+            $body .= "--{$boundary}--";
+
+            return @mail($to, $this->encodeHeaderSubject($subject), $body, implode("\r\n", $headers));
+        }
+
+        $rootBoundary = 'billo_m_' . bin2hex(random_bytes(8));
+        $altBoundary = 'billo_a_' . bin2hex(random_bytes(8));
         $headers = [];
         $headers[] = 'MIME-Version: 1.0';
-        $headers[] = 'Content-Type: multipart/alternative; boundary="' . $boundary . '"';
+        $headers[] = 'Content-Type: multipart/mixed; boundary="' . $rootBoundary . '"';
         $headers[] = 'From: ' . $this->encodeHeaderName($fromName) . " <{$fromAddr}>";
         $headers[] = 'Reply-To: ' . $fromAddr;
         $headers[] = 'X-Mailer: billo';
 
-        $body = "--{$boundary}\r\n";
+        $body = "--{$rootBoundary}\r\n";
+        $body .= "Content-Type: multipart/alternative; boundary=\"{$altBoundary}\"\r\n\r\n";
+        $body .= "--{$altBoundary}\r\n";
         $body .= "Content-Type: text/plain; charset=UTF-8\r\n\r\n";
         $body .= $textBody . "\r\n\r\n";
-        $body .= "--{$boundary}\r\n";
+        $body .= "--{$altBoundary}\r\n";
         $body .= "Content-Type: text/html; charset=UTF-8\r\n\r\n";
         $body .= $htmlBody . "\r\n\r\n";
-        $body .= "--{$boundary}--";
+        $body .= "--{$altBoundary}--\r\n";
+
+        foreach ($attachments as $a) {
+            $body .= "--{$rootBoundary}\r\n";
+            $body .= 'Content-Type: ' . $a['mime'] . '; name="' . $this->encodeMimeFilename($a['filename']) . "\"\r\n";
+            $body .= "Content-Transfer-Encoding: base64\r\n";
+            $body .= 'Content-Disposition: attachment; filename="' . $this->encodeMimeFilename($a['filename']) . "\"\r\n\r\n";
+            $body .= rtrim(chunk_split(base64_encode($a['content']), 76, "\r\n")) . "\r\n\r\n";
+        }
+        $body .= "--{$rootBoundary}--";
 
         return @mail($to, $this->encodeHeaderSubject($subject), $body, implode("\r\n", $headers));
     }
 
+    /**
+     * @param list<array{filename:string,content:string,mime:string}> $attachments
+     */
     private function sendViaSmtp(
         string $to,
         string $subject,
@@ -78,6 +134,7 @@ final class MailService
         string $textBody,
         string $fromAddr,
         string $fromName,
+        array $attachments,
     ): bool {
         $host = (string) Config::get('mail.smtp.host', '127.0.0.1');
         $port = (int) Config::get('mail.smtp.port', 587);
@@ -175,17 +232,7 @@ final class MailService
             return false;
         }
 
-        $boundary = 'billo_' . bin2hex(random_bytes(8));
-        $subjectLine = 'Subject: ' . $this->encodeHeaderSubject($subject);
-        $message = "From: " . $this->encodeHeaderName($fromName) . " <{$fromAddr}>\r\n";
-        $message .= "To: <{$to}>\r\n";
-        $message .= "{$subjectLine}\r\n";
-        $message .= "MIME-Version: 1.0\r\n";
-        $message .= "Content-Type: multipart/alternative; boundary=\"{$boundary}\"\r\n";
-        $message .= "X-Mailer: billo\r\n\r\n";
-        $message .= "--{$boundary}\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n{$textBody}\r\n\r\n";
-        $message .= "--{$boundary}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{$htmlBody}\r\n\r\n";
-        $message .= "--{$boundary}--\r\n";
+        $message = $this->buildSmtpMessage($to, $fromAddr, $fromName, $subject, $htmlBody, $textBody, $attachments);
         $message = preg_replace('/(\r\n|^)\./', '$1..', $message) ?? $message;
         fwrite($fp, $message . "\r\n.\r\n");
         if (!str_starts_with($read(), '250')) {
@@ -198,6 +245,85 @@ final class MailService
         fclose($fp);
 
         return true;
+    }
+
+    /**
+     * @param list<array{filename:string,content:string,mime:string}> $attachments
+     */
+    private function buildSmtpMessage(
+        string $to,
+        string $fromAddr,
+        string $fromName,
+        string $subject,
+        string $htmlBody,
+        string $textBody,
+        array $attachments,
+    ): string {
+        $subjectLine = 'Subject: ' . $this->encodeHeaderSubject($subject);
+        $fromLine = 'From: ' . $this->encodeHeaderName($fromName) . " <{$fromAddr}>";
+        $base = "{$fromLine}\r\nTo: <{$to}>\r\n{$subjectLine}\r\nMIME-Version: 1.0\r\nX-Mailer: billo\r\n";
+
+        if ($attachments === []) {
+            $boundary = 'billo_' . bin2hex(random_bytes(8));
+
+            return $base . "Content-Type: multipart/alternative; boundary=\"{$boundary}\"\r\n\r\n"
+                . "--{$boundary}\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n{$textBody}\r\n\r\n"
+                . "--{$boundary}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{$htmlBody}\r\n\r\n"
+                . "--{$boundary}--";
+        }
+
+        $rootBoundary = 'billo_m_' . bin2hex(random_bytes(8));
+        $altBoundary = 'billo_a_' . bin2hex(random_bytes(8));
+        $msg = $base . "Content-Type: multipart/mixed; boundary=\"{$rootBoundary}\"\r\n\r\n";
+        $msg .= "--{$rootBoundary}\r\n";
+        $msg .= "Content-Type: multipart/alternative; boundary=\"{$altBoundary}\"\r\n\r\n";
+        $msg .= "--{$altBoundary}\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n{$textBody}\r\n\r\n";
+        $msg .= "--{$altBoundary}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{$htmlBody}\r\n\r\n";
+        $msg .= "--{$altBoundary}--\r\n";
+
+        foreach ($attachments as $a) {
+            $msg .= "--{$rootBoundary}\r\n";
+            $msg .= 'Content-Type: ' . $a['mime'] . '; name="' . $this->encodeMimeFilename($a['filename']) . "\"\r\n";
+            $msg .= "Content-Transfer-Encoding: base64\r\n";
+            $msg .= 'Content-Disposition: attachment; filename="' . $this->encodeMimeFilename($a['filename']) . "\"\r\n\r\n";
+            $msg .= rtrim(chunk_split(base64_encode($a['content']), 76, "\r\n")) . "\r\n\r\n";
+        }
+        $msg .= "--{$rootBoundary}--";
+
+        return $msg;
+    }
+
+    /**
+     * @return list<array{filename:string,content:string,mime:string}>
+     */
+    private function normalizeAttachments(?array $attachments): array
+    {
+        if ($attachments === null || $attachments === []) {
+            return [];
+        }
+        $out = [];
+        foreach ($attachments as $a) {
+            if (!is_array($a)) {
+                continue;
+            }
+            $fn = isset($a['filename']) ? trim((string) $a['filename']) : '';
+            $content = $a['content'] ?? '';
+            $mime = isset($a['mime']) ? trim((string) $a['mime']) : 'application/octet-stream';
+            if ($fn === '' || !is_string($content) || $content === '') {
+                continue;
+            }
+            if (strlen($fn) > 180) {
+                $fn = substr($fn, 0, 180);
+            }
+            $out[] = ['filename' => $fn, 'content' => $content, 'mime' => $mime !== '' ? $mime : 'application/octet-stream'];
+        }
+
+        return $out;
+    }
+
+    private function encodeMimeFilename(string $filename): string
+    {
+        return addcslashes($filename, "\\\"\r\n");
     }
 
     private function encodeHeaderSubject(string $subject): string

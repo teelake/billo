@@ -44,7 +44,10 @@ ob_start();
                 </p>
             </div>
             <div class="page-head__actions">
-                <a class="btn btn--secondary" href="<?= billo_e(billo_url('/invoices/print?id=' . $invId)) ?>" target="_blank" rel="noopener noreferrer">Print / PDF</a>
+                <?php if (class_exists(\Dompdf\Dompdf::class)): ?>
+                    <a class="btn btn--primary" href="<?= billo_e(billo_url('/invoices/pdf?id=' . $invId)) ?>">Download PDF</a>
+                <?php endif; ?>
+                <a class="btn btn--secondary" href="<?= billo_e(billo_url('/invoices/print?id=' . $invId)) ?>" target="_blank" rel="noopener noreferrer">Print</a>
                 <a class="btn btn--secondary" href="<?= billo_e(billo_url('/invoices')) ?>">All invoices</a>
                 <?php if ($can_manage && $status === 'draft'): ?>
                     <a class="btn btn--primary" href="<?= billo_e(billo_url('/invoices/edit?id=' . $invId)) ?>">Edit draft</a>

@@ -8,6 +8,7 @@ use App\Controllers\DashboardController;
 use App\Controllers\HomeController;
 use App\Controllers\ClientController;
 use App\Controllers\InvoiceController;
+use App\Controllers\OrganizationController;
 use App\Controllers\TeamController;
 use App\Core\Config;
 use App\Core\Request;
@@ -18,6 +19,11 @@ use App\Services\PlatformSettings;
 $root = dirname(__DIR__);
 if (!defined('BILLO_ROOT')) {
     define('BILLO_ROOT', $root);
+}
+
+$composerAutoload = $root . '/vendor/autoload.php';
+if (is_file($composerAutoload)) {
+    require $composerAutoload;
 }
 
 require $root . '/app/Autoloader.php';
@@ -32,7 +38,8 @@ if (!is_file($configFile)) {
         . "1. Copy the template: config.example/ → config/\n"
         . "   (PowerShell: Copy-Item -Recurse config.example config )\n"
         . "2. Edit config/config.php for your URL, DB, and mail.\n"
-        . "3. Optional: copy config/local.example.php to config/local.php for secrets.\n";
+        . "3. Optional: copy config/local.example.php to config/local.php for secrets.\n"
+        . "4. For PDF invoices: run composer install (see composer.json).\n";
     exit;
 }
 
@@ -70,6 +77,7 @@ $router->get('/invoices/create', static fn () => (new InvoiceController($request
 $router->post('/invoices', static fn () => (new InvoiceController($request))->store());
 $router->get('/invoices/show', static fn () => (new InvoiceController($request))->show());
 $router->get('/invoices/print', static fn () => (new InvoiceController($request))->printView());
+$router->get('/invoices/pdf', static fn () => (new InvoiceController($request))->pdf());
 $router->post('/invoices/email', static fn () => (new InvoiceController($request))->emailClient());
 $router->get('/invoices/edit', static fn () => (new InvoiceController($request))->edit());
 $router->post('/invoices/update', static fn () => (new InvoiceController($request))->update());
@@ -84,6 +92,8 @@ $router->post('/reset-password', static fn () => (new AuthController($request))-
 $router->get('/verify-email', static fn () => (new AuthController($request))->verifyEmail());
 $router->post('/email/verification-notification', static fn () => (new AuthController($request))->resendVerificationEmail());
 $router->get('/invitations/accept', static fn () => (new AuthController($request))->acceptInvitation());
+$router->get('/organization', static fn () => (new OrganizationController($request))->edit());
+$router->post('/organization', static fn () => (new OrganizationController($request))->update());
 $router->get('/team', static fn () => (new TeamController($request))->index());
 $router->post('/team/invite', static fn () => (new TeamController($request))->invite());
 $router->post('/team/invites/revoke', static fn () => (new TeamController($request))->revokeInvite());

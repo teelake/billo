@@ -13,6 +13,7 @@ use App\Repositories\ClientRepository;
 use App\Repositories\InvoiceRepository;
 use App\Repositories\OrganizationRepository;
 use App\Services\EmailNotifications;
+use App\Services\InvoicePdfService;
 
 final class InvoiceController extends Controller
 {
@@ -340,12 +341,49 @@ final class InvoiceController extends Controller
         }
 
         $org = $this->organizations->findById($ctx['organization_id']);
-        $orgName = is_array($org) ? (string) ($org['name'] ?? '') : '';
 
         View::render('invoices/print', [
             'invoice' => $invoice,
-            'organization_name' => $orgName,
+            'organization' => is_array($org) ? $org : [],
         ]);
+    }
+
+    public function pdf(): void
+    {
+        $ctx = $this->requireAuth();
+        $id = $this->intIdFromRequest();
+        if ($id === null) {
+            Session::flash('error', 'Invalid invoice.');
+            $this->redirect('/invoices');
+        }
+
+        if (!class_exists(\Dompdf\Dompdf::class)) {
+            Session::flash('error', 'PDF is not installed. Run composer install in the project root (see composer.json).');
+            $this->redirect('/invoices/show?id=' . $id);
+        }
+
+        $invoice = $this->invoices->findWithLines($id, $ctx['organization_id']);
+        if ($invoice === null) {
+            Session::flash('error', 'Invoice not found.');
+            $this->redirect('/invoices');
+        }
+
+        $org = $this->organizations->findById($ctx['organization_id']) ?? [];
+
+        try {
+            $pdf = (new InvoicePdfService())->render($invoice, $org);
+        } catch (\Throwable) {
+            Session::flash('error', 'Could not generate PDF.');
+            $this->redirect('/invoices/show?id=' . $id);
+        }
+
+        $rawName = (string) ($invoice['invoice_number'] ?? 'invoice');
+        $filename = preg_replace('/[^a-zA-Z0-9._-]+/', '_', $rawName) . '.pdf';
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: private, max-age=0, must-revalidate');
+        echo $pdf;
+        exit;
     }
 
     public function emailClient(): void
@@ -383,10 +421,26 @@ final class InvoiceController extends Controller
         }
 
         $org = $this->organizations->findById($ctx['organization_id']);
-        $orgName = is_array($org) && ($org['name'] ?? '') !== '' ? (string) $org['name'] : billo_brand_name();
+        $orgRow = is_array($org) ? $org : [];
+        $orgName = ($orgRow['name'] ?? '') !== '' ? (string) $orgRow['name'] : billo_brand_name();
 
-        if ($this->emailNotifications->sendInvoiceToClient($to, $orgName, $invoice)) {
-            Session::flash('success', 'Invoice emailed to ' . $to . '.');
+        $pdfBinary = null;
+        $pdfFilename = preg_replace('/[^a-zA-Z0-9._-]+/', '_', (string) ($invoice['invoice_number'] ?? 'invoice')) . '.pdf';
+        if (class_exists(\Dompdf\Dompdf::class)) {
+            try {
+                $pdfBinary = (new InvoicePdfService())->render($invoice, $orgRow);
+            } catch (\Throwable $e) {
+                error_log('Billo invoice PDF for email: ' . $e->getMessage());
+                $pdfBinary = null;
+            }
+        }
+
+        if ($this->emailNotifications->sendInvoiceToClient($to, $orgName, $invoice, $pdfBinary, $pdfFilename)) {
+            $msg = 'Invoice emailed to ' . $to . '.';
+            if ($pdfBinary !== null) {
+                $msg .= ' A PDF was attached.';
+            }
+            Session::flash('success', $msg);
         } else {
             Session::flash('error', 'Could not send email. Check mail configuration.');
         }

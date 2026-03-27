@@ -68,8 +68,13 @@ final class EmailNotifications
     /**
      * @param array<string, mixed> $invoice row from InvoiceRepository::findWithLines (includes lines)
      */
-    public function sendInvoiceToClient(string $toEmail, string $organizationName, array $invoice): bool
-    {
+    public function sendInvoiceToClient(
+        string $toEmail,
+        string $organizationName,
+        array $invoice,
+        ?string $pdfBinary = null,
+        string $pdfFilename = 'invoice.pdf',
+    ): bool {
         $app = (string) Config::get('app.name', 'billo');
         $num = (string) ($invoice['invoice_number'] ?? 'Invoice');
         $subject = "{$num} from {$organizationName} — {$app}";
@@ -123,6 +128,9 @@ final class EmailNotifications
         if (!empty($invoice['notes'])) {
             $text .= "\nNotes:\n" . (string) $invoice['notes'] . "\n";
         }
+        if ($pdfBinary !== null && $pdfBinary !== '') {
+            $text .= "\n(A PDF copy is attached.)\n";
+        }
         $text .= "\n—\nSent via {$app}\n";
 
         $h = static function (string $s): string {
@@ -175,10 +183,18 @@ final class EmailNotifications
             . '<tr><td style="padding:10px 0 6px;font-weight:700;font-size:17px">Total</td><td style="padding:10px 0 6px;text-align:right;font-weight:700;font-size:17px;font-variant-numeric:tabular-nums">' . $h($currency . ' ' . number_format((float) ($invoice['total'] ?? 0), 2)) . '</td></tr>'
             . '</table>'
             . $notesHtml
+            . ($pdfBinary !== null && $pdfBinary !== ''
+                ? '<p style="margin:24px 0 0;font-size:14px;color:#334155">A <strong>PDF copy</strong> of this invoice is attached.</p>' : '')
             . '<p style="margin:28px 0 0;font-size:13px;color:#94a3b8">Sent via ' . $h($app) . '</p>'
             . '</div>';
 
-        return $this->mail->send($toEmail, $subject, $html, $text);
+        $attachments = null;
+        if ($pdfBinary !== null && $pdfBinary !== '') {
+            $fn = $pdfFilename !== '' ? $pdfFilename : 'invoice.pdf';
+            $attachments = [['filename' => $fn, 'content' => $pdfBinary, 'mime' => 'application/pdf']];
+        }
+
+        return $this->mail->send($toEmail, $subject, $html, $text, $attachments);
     }
 
     private function url(string $path): string

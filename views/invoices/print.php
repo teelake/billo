@@ -2,9 +2,13 @@
 declare(strict_types=1);
 
 /** @var array<string, mixed> $invoice */
-/** @var string $organization_name */
+/** @var array<string, mixed> $organization */
 
-$orgName = $organization_name !== '' ? $organization_name : billo_brand_name();
+$org = isset($organization) && is_array($organization) ? $organization : [];
+$orgName = trim((string) ($org['legal_name'] ?? ''));
+if ($orgName === '') {
+    $orgName = (string) ($org['name'] ?? billo_brand_name());
+}
 $currency = (string) ($invoice['currency'] ?? 'NGN');
 $num = (string) ($invoice['invoice_number'] ?? 'Invoice');
 /** @var list<array<string, mixed>> $lines */
@@ -28,6 +32,7 @@ $title = $num . ' — ' . $orgName;
         .toolbar { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; padding: 1rem 1.25rem; background: var(--bg); border-bottom: 1px solid var(--border); }
         .toolbar a { color: #1e3a8a; font-weight: 600; text-decoration: none; font-size: 0.9rem; }
         .toolbar a:hover { color: #16a34a; }
+        .toolbar-save { border: 1px solid #e2e8f0; padding: 0.45rem 1rem; border-radius: 999px; background: #fff; }
         .toolbar button { font-family: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer; padding: 0.5rem 1rem; border-radius: 999px; border: none; background: #16a34a; color: #fff; }
         .toolbar button:hover { background: #15803d; }
         .sheet { max-width: 48rem; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
@@ -48,6 +53,10 @@ $title = $num . ' — ' . $orgName;
         .notes { margin-top: 1.75rem; font-size: 0.9rem; }
         .notes h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 0.35rem; }
         .notes p { margin: 0; white-space: pre-wrap; color: #334155; }
+        .letterhead img { max-height: 56px; margin-bottom: 0.5rem; }
+        .letterhead-addr { font-size: 0.82rem; color: #475569; line-height: 1.45; margin: 0.35rem 0 0; }
+        .letterhead-tax { font-size: 0.8rem; color: #64748b; margin: 0.5rem 0 0; }
+        .inv-footer { margin-top: 1.75rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.82rem; color: #64748b; white-space: pre-wrap; }
         @media print {
             .no-print { display: none !important; }
             body { background: #fff; }
@@ -58,11 +67,51 @@ $title = $num . ' — ' . $orgName;
 <body>
 <div class="toolbar no-print">
     <a href="<?= billo_e(billo_url('/invoices/show?id=' . (int) ($invoice['id'] ?? 0))) ?>">← Back to invoice</a>
+    <?php if (class_exists(\Dompdf\Dompdf::class)): ?>
+        <a class="toolbar-save" href="<?= billo_e(billo_url('/invoices/pdf?id=' . (int) ($invoice['id'] ?? 0))) ?>">Download PDF</a>
+    <?php endif; ?>
     <button type="button" onclick="window.print()">Print / Save as PDF</button>
 </div>
 <div class="sheet">
-    <p class="doc-label">Invoice</p>
+    <?php
+    $logoRef = isset($org['invoice_logo_url']) ? trim((string) $org['invoice_logo_url']) : '';
+    if ($logoRef !== '') {
+        if (str_starts_with($logoRef, 'https://') || str_starts_with($logoRef, 'http://')) {
+            echo '<div class="letterhead"><img src="' . billo_e($logoRef) . '" alt=""></div>';
+        } else {
+            $root = realpath(BILLO_ROOT);
+            $path = $root ? realpath(BILLO_ROOT . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, ltrim($logoRef, '/\\'))) : false;
+            if ($path !== false && is_file($path) && str_starts_with($path, $root)) {
+                $mime = @mime_content_type($path);
+                if (is_string($mime) && str_starts_with($mime, 'image/')) {
+                    $raw = @file_get_contents($path);
+                    if ($raw !== false && $raw !== '') {
+                        echo '<div class="letterhead"><img src="data:' . billo_e($mime) . ';base64,' . base64_encode($raw) . '" alt=""></div>';
+                    }
+                }
+            }
+        }
+    }
+    ?>
+    <p class="doc-label">Invoice from</p>
     <p class="org"><?= billo_e($orgName) ?></p>
+    <?php
+    $addrParts = array_filter([
+        $org['billing_address_line1'] ?? '',
+        $org['billing_address_line2'] ?? '',
+        trim(implode(', ', array_filter([
+            $org['billing_city'] ?? '',
+            $org['billing_state'] ?? '',
+            $org['billing_country'] ?? '',
+        ], static fn ($v) => is_string($v) && $v !== ''))),
+    ], static fn ($v) => is_string($v) && trim($v) !== '');
+    if ($addrParts !== []) {
+        echo '<p class="letterhead-addr">' . nl2br(billo_e(implode("\n", $addrParts))) . '</p>';
+    }
+    if (!empty($org['tax_id'])) {
+        echo '<p class="letterhead-tax">Tax ID: ' . billo_e((string) $org['tax_id']) . '</p>';
+    }
+    ?>
     <h1><?= billo_e($num) ?></h1>
 
     <table class="meta">
@@ -118,6 +167,9 @@ $title = $num . ' — ' . $orgName;
             <h2>Notes</h2>
             <p><?= nl2br(billo_e((string) $invoice['notes'])) ?></p>
         </div>
+    <?php endif; ?>
+    <?php if (!empty($org['invoice_footer'])): ?>
+        <div class="inv-footer"><?= nl2br(billo_e((string) $org['invoice_footer'])) ?></div>
     <?php endif; ?>
 </div>
 </body>
