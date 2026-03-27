@@ -138,6 +138,21 @@ function billo_app_nav_mode(): string
  *
  * @param array<string, mixed>|null $organization
  */
+/**
+ * Hide tax column/row when org has tax disabled and this document has no tax amount.
+ *
+ * @param array<string, mixed> $organization
+ * @param array<string, mixed> $invoice
+ */
+function billo_invoice_hide_tax_column(array $organization, array $invoice): bool
+{
+    if ((int) ($organization['invoice_tax_enabled'] ?? 1) !== 0) {
+        return false;
+    }
+
+    return abs((float) ($invoice['tax_total'] ?? 0)) < 0.00001;
+}
+
 function billo_organization_logo_display_url(?array $organization): ?string
 {
     if ($organization === null) {

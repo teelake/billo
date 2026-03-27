@@ -11,6 +11,7 @@ use App\Core\Session;
 use App\Core\View;
 use App\Repositories\OrganizationRepository;
 use App\Services\OrganizationLogoService;
+use App\Support\InvoiceTheme;
 use App\Support\OrganizationIdentityNormalizer;
 use PDOException;
 
@@ -160,7 +161,11 @@ final class OrganizationController extends Controller
      *   company_website:?string,
      *   company_website_host:?string,
      *   invoice_footer:?string,
-     *   invoice_logo_url:?string
+     *   invoice_logo_url:?string,
+     *   invoice_tax_enabled:int,
+     *   invoice_style:string,
+     *   invoice_brand_primary:string,
+     *   invoice_brand_accent:string
      * }|string
      */
     private function validatedPayload(int $organizationId, ?string $logoUploadPath, bool $removeLogo): array|string
@@ -222,6 +227,19 @@ final class OrganizationController extends Controller
             }
         }
 
+        $invoiceTaxEnabled = isset($_POST['invoice_tax_enabled']) && (string) $_POST['invoice_tax_enabled'] === '1' ? 1 : 0;
+        $invoiceStyle = InvoiceTheme::normalizeStyle((string) ($this->request->input('invoice_style', 'modern') ?? 'modern'));
+        $rawPrimary = trim((string) ($this->request->input('invoice_brand_primary', '') ?? ''));
+        $rawAccent = trim((string) ($this->request->input('invoice_brand_accent', '') ?? ''));
+        if ($rawPrimary !== '' && preg_match('/^#[0-9A-Fa-f]{6}$/', $rawPrimary) !== 1) {
+            return 'Primary brand color must be a hex code like #1E3A8A.';
+        }
+        if ($rawAccent !== '' && preg_match('/^#[0-9A-Fa-f]{6}$/', $rawAccent) !== 1) {
+            return 'Accent brand color must be a hex code like #16A34A.';
+        }
+        $brandPrimary = strtoupper($rawPrimary !== '' ? $rawPrimary : '#1E3A8A');
+        $brandAccent = strtoupper($rawAccent !== '' ? $rawAccent : '#16A34A');
+
         return [
             'legal_name' => $legal,
             'billing_address_line1' => $l1,
@@ -237,6 +255,10 @@ final class OrganizationController extends Controller
             'company_website_host' => $websiteHost,
             'invoice_footer' => $footer,
             'invoice_logo_url' => $logo,
+            'invoice_tax_enabled' => $invoiceTaxEnabled,
+            'invoice_style' => $invoiceStyle,
+            'invoice_brand_primary' => strtoupper($brandPrimary),
+            'invoice_brand_accent' => strtoupper($brandAccent),
         ];
     }
 

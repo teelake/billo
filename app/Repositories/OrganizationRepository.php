@@ -106,7 +106,11 @@ final class OrganizationRepository
      *   company_website:?string,
      *   company_website_host:?string,
      *   invoice_footer:?string,
-     *   invoice_logo_url:?string
+     *   invoice_logo_url:?string,
+     *   invoice_tax_enabled:int,
+     *   invoice_style:string,
+     *   invoice_brand_primary:string,
+     *   invoice_brand_accent:string
      * } $data
      */
     public function updateBranding(int $organizationId, array $data): bool
@@ -127,6 +131,10 @@ final class OrganizationRepository
                 company_website_host = :company_website_host,
                 invoice_footer = :invoice_footer,
                 invoice_logo_url = :invoice_logo_url,
+                invoice_tax_enabled = :invoice_tax_enabled,
+                invoice_style = :invoice_style,
+                invoice_brand_primary = :invoice_brand_primary,
+                invoice_brand_accent = :invoice_brand_accent,
                 updated_at = CURRENT_TIMESTAMP
              WHERE id = :id'
         );
@@ -146,6 +154,10 @@ final class OrganizationRepository
             'company_website_host' => $data['company_website_host'],
             'invoice_footer' => $data['invoice_footer'],
             'invoice_logo_url' => $data['invoice_logo_url'],
+            'invoice_tax_enabled' => (int) $data['invoice_tax_enabled'],
+            'invoice_style' => $data['invoice_style'],
+            'invoice_brand_primary' => $data['invoice_brand_primary'],
+            'invoice_brand_accent' => $data['invoice_brand_accent'],
         ]);
 
         return true;
