@@ -1,0 +1,14 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Subfolder install: set to your public URL path (e.g. /billo) — must match config app.base_path
+    RewriteBase /billo/
+
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# Security: do not list directories
+Options -Indexes

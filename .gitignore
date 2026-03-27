@@ -1,0 +1,5 @@
+config/local.php
+.env
+storage/logs/*
+!storage/logs/.gitkeep
+vendor/
