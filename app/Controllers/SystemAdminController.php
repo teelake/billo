@@ -192,6 +192,9 @@ final class SystemAdminController extends \App\Core\Controller
             'organization_id' => $organizationId,
             'from' => $fromStr,
             'to' => $toStr,
+            'created_from' => $createdFromStr,
+            'created_to' => $createdToStr,
+            'inv_q' => $invQ,
             'query_for_links' => $queryForLinks,
             'user_name' => (string) Session::get('user_name', ''),
             'role' => (string) Session::get('role', 'owner'),
@@ -229,22 +232,28 @@ final class SystemAdminController extends \App\Core\Controller
         }
 
         if ($type === 'organizations') {
-            fputcsv($out, ['organization_id', 'name', 'slug', 'created_at']);
-            foreach ($this->platformReports->exportOrganizationsCsv($q) as $row) {
-                fputcsv($out, $row);
+            fputcsv($out, ['row', 'organization_id', 'name', 'slug', 'created_at']);
+            $rn = 0;
+            foreach ($this->platformReports->exportOrganizationsCsv($q, $createdFrom, $createdTo) as $row) {
+                ++$rn;
+                fputcsv($out, array_merge([$rn], $row));
             }
         } elseif ($type === 'invoices') {
             fputcsv($out, [
-                'invoice_id', 'organization_id', 'organization', 'invoice_number', 'status',
+                'row', 'invoice_id', 'organization_id', 'organization', 'invoice_number', 'status',
                 'total', 'currency', 'issue_date', 'created_at',
             ]);
-            foreach ($this->platformReports->exportInvoicesCsv($status, $organizationId, $dateFrom, $dateTo) as $row) {
-                fputcsv($out, $row);
+            $rn = 0;
+            foreach ($this->platformReports->exportInvoicesCsv($status, $organizationId, $dateFrom, $dateTo, $invQ) as $row) {
+                ++$rn;
+                fputcsv($out, array_merge([$rn], $row));
             }
         } else {
-            fputcsv($out, ['user_id', 'email', 'name', 'platform_operator', 'created_at']);
-            foreach ($this->platformReports->exportUsersCsv($q) as $row) {
-                fputcsv($out, $row);
+            fputcsv($out, ['row', 'user_id', 'email', 'name', 'platform_operator', 'created_at']);
+            $rn = 0;
+            foreach ($this->platformReports->exportUsersCsv($q, $createdFrom, $createdTo) as $row) {
+                ++$rn;
+                fputcsv($out, array_merge([$rn], $row));
             }
         }
         fclose($out);
