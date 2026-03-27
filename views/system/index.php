@@ -38,7 +38,9 @@ ob_start();
         <div class="welcome-card" style="margin-bottom:1.25rem">
             <h2 class="invoice-detail-card__h">What you can do here</h2>
             <ul class="checklist" style="margin:.75rem 0 0">
-                <li><a href="<?= billo_e(billo_url('/system/analytics')) ?>">Platform analytics &amp; reports</a> — trends, pipeline, leaderboard, CSV export</li>
+                <li><a href="<?= billo_e(billo_url('/system/analytics')) ?>">Platform analytics</a> — trends, charts, org leaderboard, org-level CSV export</li>
+                <li><a href="<?= billo_e(billo_url('/system/reports')) ?>">Platform reports</a> — filterable organizations, invoices, and users with pagination + export</li>
+                <li><a href="<?= billo_e(billo_url('/system/configuration')) ?>">Configuration snapshot</a> — app URL, mail, payments (masked secrets), session, auth TTLs</li>
                 <li><a href="<?= billo_e(billo_url('/platform/landing')) ?>">Edit public landing / marketing copy</a></li>
             </ul>
         </div>

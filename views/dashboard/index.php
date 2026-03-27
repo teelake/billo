@@ -10,9 +10,15 @@ use App\Core\Csrf;
 /** @var bool $email_verified */
 /** @var bool $show_team_nav */
 /** @var bool $can_manage_clients */
+/** @var bool $is_platform_operator */
+/** @var array<string, mixed>|null $platform_summary */
+/** @var array<string, mixed>|null $tenant_summary */
 /** @var string $error */
 /** @var string $success */
 $can_manage_clients = !empty($can_manage_clients);
+$is_platform_operator = !empty($is_platform_operator);
+$platform_summary = is_array($platform_summary ?? null) ? $platform_summary : null;
+$tenant_summary = is_array($tenant_summary ?? null) ? $tenant_summary : null;
 
 $orgName = is_array($organization) ? (string) ($organization['name'] ?? 'Your organization') : 'Your organization';
 $title = 'Dashboard — billo';
@@ -38,6 +44,68 @@ ob_start();
                     <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
                     <button type="submit" class="btn btn--secondary btn--sm">Resend email</button>
                 </form>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($is_platform_operator && $platform_summary !== null): ?>
+            <div class="platform-command">
+                <div class="platform-command__head">
+                    <div>
+                        <p class="eyebrow eyebrow--dark">Platform operator</p>
+                        <h2 class="platform-command__title">Live platform snapshot</h2>
+                        <p class="platform-command__lead">Cross-tenant KPIs. Your day-to-day tools (clients &amp; invoices below) stay scoped to <strong><?= billo_e($orgName) ?></strong> — this strip is platform-wide only.</p>
+                    </div>
+                    <div class="platform-command__actions">
+                        <a class="btn btn--primary" href="<?= billo_e(billo_url('/system/analytics')) ?>">Platform analytics</a>
+                        <a class="btn btn--secondary" href="<?= billo_e(billo_url('/system/reports')) ?>">Reports</a>
+                        <a class="btn btn--secondary" href="<?= billo_e(billo_url('/system/configuration')) ?>">Configuration</a>
+                    </div>
+                </div>
+                <div class="platform-stat-grid">
+                    <div class="platform-stat">
+                        <p class="platform-stat__label">Organizations</p>
+                        <p class="platform-stat__value"><?= (int) ($platform_summary['organizations'] ?? 0) ?></p>
+                    </div>
+                    <div class="platform-stat">
+                        <p class="platform-stat__label">Users</p>
+                        <p class="platform-stat__value"><?= (int) ($platform_summary['users'] ?? 0) ?></p>
+                    </div>
+                    <div class="platform-stat">
+                        <p class="platform-stat__label">Invoices</p>
+                        <p class="platform-stat__value"><?= (int) ($platform_summary['invoices'] ?? 0) ?></p>
+                    </div>
+                    <div class="platform-stat platform-stat--accent">
+                        <p class="platform-stat__label">Collected (paid)</p>
+                        <p class="platform-stat__value"><?= billo_e((string) ($platform_summary['revenue_paid'] ?? '0.00')) ?></p>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($tenant_summary !== null): ?>
+            <div class="tenant-overview">
+                <div class="tenant-overview__head">
+                    <h2 class="tenant-overview__title">Your organization at a glance</h2>
+                    <a class="btn btn--secondary btn--sm" href="<?= billo_e(billo_url('/analytics')) ?>">Open analytics</a>
+                </div>
+                <div class="tenant-stat-grid">
+                    <div class="tenant-stat">
+                        <span class="tenant-stat__val"><?= (int) ($tenant_summary['clients'] ?? 0) ?></span>
+                        <span class="tenant-stat__lab">Clients</span>
+                    </div>
+                    <div class="tenant-stat">
+                        <span class="tenant-stat__val"><?= (int) ($tenant_summary['invoices'] ?? 0) ?></span>
+                        <span class="tenant-stat__lab">Invoices</span>
+                    </div>
+                    <div class="tenant-stat">
+                        <span class="tenant-stat__val"><?= (int) ($tenant_summary['invoices_paid'] ?? 0) ?></span>
+                        <span class="tenant-stat__lab">Paid</span>
+                    </div>
+                    <div class="tenant-stat tenant-stat--accent">
+                        <span class="tenant-stat__val"><?= billo_e((string) ($tenant_summary['revenue_paid'] ?? '0.00')) ?></span>
+                        <span class="tenant-stat__lab">Revenue (paid)</span>
+                    </div>
+                </div>
             </div>
         <?php endif; ?>
 

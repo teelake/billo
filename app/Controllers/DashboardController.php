@@ -8,6 +8,8 @@ use App\Core\Controller;
 use App\Core\Session;
 use App\Core\View;
 use App\Repositories\OrganizationRepository;
+use App\Repositories\PlatformAnalyticsRepository;
+use App\Repositories\TenantAnalyticsRepository;
 use App\Repositories\UserRepository;
 
 final class DashboardController extends Controller
@@ -15,6 +17,8 @@ final class DashboardController extends Controller
     public function __construct(
         private OrganizationRepository $organizations = new OrganizationRepository(),
         private UserRepository $users = new UserRepository(),
+        private PlatformAnalyticsRepository $platformAnalytics = new PlatformAnalyticsRepository(),
+        private TenantAnalyticsRepository $tenantAnalytics = new TenantAnalyticsRepository(),
     ) {
     }
 
@@ -25,6 +29,12 @@ final class DashboardController extends Controller
         $user = $this->users->findById($ctx['user_id']);
         $emailVerified = $user !== null && !empty($user['email_verified_at']);
 
+        $isPlatformOperator = billo_is_system_admin();
+        $platformSummary = $isPlatformOperator ? $this->platformAnalytics->summary() : null;
+        $tenantSummary = in_array($ctx['role'], ['owner', 'admin'], true)
+            ? $this->tenantAnalytics->summary((int) $ctx['organization_id'])
+            : null;
+
         View::render('dashboard/index', [
             'organization' => $org,
             'role' => $ctx['role'],
@@ -33,6 +43,9 @@ final class DashboardController extends Controller
             'email_verified' => $emailVerified,
             'show_team_nav' => in_array($ctx['role'], ['owner', 'admin'], true),
             'can_manage_clients' => in_array($ctx['role'], ['owner', 'admin', 'member'], true),
+            'is_platform_operator' => $isPlatformOperator,
+            'platform_summary' => $platformSummary,
+            'tenant_summary' => $tenantSummary,
             'error' => Session::flash('error') ?? '',
             'success' => Session::flash('success') ?? '',
         ]);
