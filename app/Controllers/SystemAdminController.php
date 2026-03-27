@@ -147,7 +147,9 @@ final class SystemAdminController extends \App\Core\Controller
         $createdToStr = $createdTo ?? '';
 
         $invQRaw = (string) ($this->request->input('inv_q', '') ?? '');
-        $invQ = mb_strlen($invQRaw, 'UTF-8') > 80 ? mb_substr($invQRaw, 0, 80, 'UTF-8') : $invQRaw;
+        $invQ = function_exists('mb_strlen') && mb_strlen($invQRaw, 'UTF-8') > 80
+            ? mb_substr($invQRaw, 0, 80, 'UTF-8')
+            : (strlen($invQRaw) > 80 ? substr($invQRaw, 0, 80) : $invQRaw);
 
         $rows = [];
         $total = 0;
@@ -220,6 +222,14 @@ final class SystemAdminController extends \App\Core\Controller
             $this->request->input('from', '') ?? '',
             $this->request->input('to', '') ?? '',
         );
+        [$createdFrom, $createdTo] = $this->platformReports->normalizeDateRange(
+            $this->request->input('created_from', '') ?? '',
+            $this->request->input('created_to', '') ?? '',
+        );
+        $invQRaw = (string) ($this->request->input('inv_q', '') ?? '');
+        $invQ = function_exists('mb_strlen') && mb_strlen($invQRaw, 'UTF-8') > 80
+            ? mb_substr($invQRaw, 0, 80, 'UTF-8')
+            : (strlen($invQRaw) > 80 ? substr($invQRaw, 0, 80) : $invQRaw);
 
         $filename = 'billo-report-' . $type . '-' . date('Y-m-d') . '.csv';
         header('Content-Type: text/csv; charset=UTF-8');

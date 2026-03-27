@@ -12,6 +12,9 @@ declare(strict_types=1);
 /** @var int $organization_id */
 /** @var string $from */
 /** @var string $to */
+/** @var string $created_from */
+/** @var string $created_to */
+/** @var string $inv_q */
 /** @var array<string, string> $query_for_links */
 /** @var string $user_name */
 /** @var string $role */
@@ -32,6 +35,23 @@ $buildUrl = static function (array $base, int $p): string {
 $exportQuery = $query_for_links;
 unset($exportQuery['page']);
 $exportUrl = billo_url('/system/reports/export?' . http_build_query($exportQuery));
+
+$created_from = $created_from ?? '';
+$created_to = $created_to ?? '';
+$inv_q = $inv_q ?? '';
+$showing_from = $total === 0 ? 0 : ($page - 1) * $per_page + 1;
+$showing_to = min($page * $per_page, $total);
+$pagination_pages = [];
+if ($total_pages > 0) {
+    $window = 7;
+    $half = (int) floor($window / 2);
+    $pStart = max(1, $page - $half);
+    $pEnd = min($total_pages, $pStart + $window - 1);
+    $pStart = max(1, $pEnd - $window + 1);
+    for ($pi = $pStart; $pi <= $pEnd; $pi++) {
+        $pagination_pages[] = $pi;
+    }
+}
 
 ob_start();
 ?>
@@ -80,10 +100,20 @@ ob_start();
                 </label>
             </div>
             <?php if ($report_type === 'organizations' || $report_type === 'users'): ?>
-                <label class="reports-field reports-field--grow">
-                    <span class="reports-field__label">Search<?= $report_type === 'users' ? ' (email or name)' : ' (name or slug)' ?></span>
-                    <input type="search" name="q" class="reports-field__control" value="<?= billo_e($q) ?>" placeholder="Filter…" autocomplete="off">
-                </label>
+                <div class="reports-toolbar__row reports-toolbar__row--wrap">
+                    <label class="reports-field reports-field--grow">
+                        <span class="reports-field__label">Search<?= $report_type === 'users' ? ' (email or name)' : ' (name or slug)' ?></span>
+                        <input type="search" name="q" class="reports-field__control" value="<?= billo_e($q) ?>" placeholder="Filter…" autocomplete="off">
+                    </label>
+                    <label class="reports-field">
+                        <span class="reports-field__label">Created from</span>
+                        <input type="date" name="created_from" class="reports-field__control" value="<?= billo_e($created_from) ?>">
+                    </label>
+                    <label class="reports-field">
+                        <span class="reports-field__label">Created to</span>
+                        <input type="date" name="created_to" class="reports-field__control" value="<?= billo_e($created_to) ?>">
+                    </label>
+                </div>
             <?php else: ?>
                 <div class="reports-toolbar__row reports-toolbar__row--wrap">
                     <label class="reports-field">
@@ -99,6 +129,10 @@ ob_start();
                     <label class="reports-field">
                         <span class="reports-field__label">Organization ID</span>
                         <input type="text" name="organization_id" class="reports-field__control" inputmode="numeric" value="<?= $organization_id > 0 ? (string) (int) $organization_id : '' ?>" placeholder="Any">
+                    </label>
+                    <label class="reports-field reports-field--grow">
+                        <span class="reports-field__label">Invoice # contains</span>
+                        <input type="search" name="inv_q" class="reports-field__control" value="<?= billo_e($inv_q) ?>" placeholder="e.g. INV-2024" autocomplete="off" maxlength="80">
                     </label>
                     <label class="reports-field">
                         <span class="reports-field__label">Issue from</span>
@@ -116,13 +150,18 @@ ob_start();
             </div>
         </form>
 
-        <p class="reports-meta"><?= number_format((int) $total) ?> result<?= $total !== 1 ? 's' : '' ?> · page <?= (int) $page ?> of <?= (int) $total_pages ?></p>
+        <p class="reports-meta">
+            <?= number_format((int) $total) ?> result<?= $total !== 1 ? 's' : '' ?>
+            · showing <?= (int) $showing_from ?>–<?= (int) $showing_to ?>
+            · page <?= (int) $page ?> of <?= (int) $total_pages ?>
+        </p>
 
         <div class="table-scroll">
             <?php if ($report_type === 'organizations'): ?>
                 <table class="data-table data-table--comfortable">
                     <thead>
                         <tr>
+                            <th class="num"><abbr title="Row number (ordered list)">#</abbr></th>
                             <th class="num">ID</th>
                             <th>Name</th>
                             <th>Slug</th>
@@ -130,11 +169,17 @@ ob_start();
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($rows as $r): ?>
-                            <?php if (!is_array($r)) {
+                        <?php
+                        $rowNum = 0;
+                        foreach ($rows as $r):
+                            if (!is_array($r)) {
                                 continue;
-                            } ?>
+                            }
+                            ++$rowNum;
+                            $serial = ($page - 1) * $per_page + $rowNum;
+                            ?>
                             <tr>
+                                <td class="num"><?= (int) $serial ?></td>
                                 <td class="num"><?= (int) ($r['id'] ?? 0) ?></td>
                                 <td><?= billo_e((string) ($r['name'] ?? '')) ?></td>
                                 <td><code><?= billo_e((string) ($r['slug'] ?? '')) ?></code></td>
@@ -142,7 +187,7 @@ ob_start();
                             </tr>
                         <?php endforeach; ?>
                         <?php if (count($rows) === 0): ?>
-                            <tr><td colspan="4" class="reports-empty">No rows match these filters.</td></tr>
+                            <tr><td colspan="5" class="reports-empty">No rows match these filters.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -150,6 +195,7 @@ ob_start();
                 <table class="data-table data-table--comfortable">
                     <thead>
                         <tr>
+                            <th class="num"><abbr title="Row number (ordered list)">#</abbr></th>
                             <th class="num">ID</th>
                             <th class="num">Org</th>
                             <th>Organization</th>
@@ -160,11 +206,17 @@ ob_start();
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($rows as $r): ?>
-                            <?php if (!is_array($r)) {
+                        <?php
+                        $rowNum = 0;
+                        foreach ($rows as $r):
+                            if (!is_array($r)) {
                                 continue;
-                            } ?>
+                            }
+                            ++$rowNum;
+                            $serial = ($page - 1) * $per_page + $rowNum;
+                            ?>
                             <tr>
+                                <td class="num"><?= (int) $serial ?></td>
                                 <td class="num"><?= (int) ($r['id'] ?? 0) ?></td>
                                 <td class="num"><?= (int) ($r['organization_id'] ?? 0) ?></td>
                                 <td><?= billo_e((string) ($r['org_name'] ?? '')) ?></td>
@@ -175,7 +227,7 @@ ob_start();
                             </tr>
                         <?php endforeach; ?>
                         <?php if (count($rows) === 0): ?>
-                            <tr><td colspan="7" class="reports-empty">No rows match these filters.</td></tr>
+                            <tr><td colspan="8" class="reports-empty">No rows match these filters.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -183,6 +235,7 @@ ob_start();
                 <table class="data-table data-table--comfortable">
                     <thead>
                         <tr>
+                            <th class="num"><abbr title="Row number (ordered list)">#</abbr></th>
                             <th class="num">ID</th>
                             <th>Email</th>
                             <th>Name</th>
@@ -191,11 +244,17 @@ ob_start();
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($rows as $r): ?>
-                            <?php if (!is_array($r)) {
+                        <?php
+                        $rowNum = 0;
+                        foreach ($rows as $r):
+                            if (!is_array($r)) {
                                 continue;
-                            } ?>
+                            }
+                            ++$rowNum;
+                            $serial = ($page - 1) * $per_page + $rowNum;
+                            ?>
                             <tr>
+                                <td class="num"><?= (int) $serial ?></td>
                                 <td class="num"><?= (int) ($r['id'] ?? 0) ?></td>
                                 <td><?= billo_e((string) ($r['email'] ?? '')) ?></td>
                                 <td><?= billo_e((string) ($r['name'] ?? '')) ?></td>
@@ -204,28 +263,38 @@ ob_start();
                             </tr>
                         <?php endforeach; ?>
                         <?php if (count($rows) === 0): ?>
-                            <tr><td colspan="5" class="reports-empty">No rows match these filters.</td></tr>
+                            <tr><td colspan="6" class="reports-empty">No rows match these filters.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
             <?php endif; ?>
         </div>
 
-        <?php if ($total_pages > 1): ?>
-            <nav class="pagination" aria-label="Report pages">
-                <?php if ($page > 1): ?>
-                    <a class="pagination__link" href="<?= billo_e($buildUrl($query_for_links, $page - 1)) ?>">Previous</a>
-                <?php else: ?>
-                    <span class="pagination__muted">Previous</span>
-                <?php endif; ?>
-                <span class="pagination__status"><?= (int) $page ?> / <?= (int) $total_pages ?></span>
-                <?php if ($page < $total_pages): ?>
-                    <a class="pagination__link" href="<?= billo_e($buildUrl($query_for_links, $page + 1)) ?>">Next</a>
-                <?php else: ?>
-                    <span class="pagination__muted">Next</span>
-                <?php endif; ?>
-            </nav>
-        <?php endif; ?>
+        <nav class="pagination pagination--full" aria-label="Report pages">
+            <?php if ($page > 1): ?>
+                <a class="pagination__link" href="<?= billo_e($buildUrl($query_for_links, 1)) ?>">First</a>
+                <a class="pagination__link" href="<?= billo_e($buildUrl($query_for_links, $page - 1)) ?>">Previous</a>
+            <?php else: ?>
+                <span class="pagination__muted">First</span>
+                <span class="pagination__muted">Previous</span>
+            <?php endif; ?>
+            <span class="pagination__pages">
+                <?php foreach ($pagination_pages as $pn): ?>
+                    <?php if ((int) $pn === (int) $page): ?>
+                        <span class="pagination__page pagination__page--current" aria-current="page"><?= (int) $pn ?></span>
+                    <?php else: ?>
+                        <a class="pagination__page" href="<?= billo_e($buildUrl($query_for_links, (int) $pn)) ?>"><?= (int) $pn ?></a>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </span>
+            <?php if ($page < $total_pages): ?>
+                <a class="pagination__link" href="<?= billo_e($buildUrl($query_for_links, $page + 1)) ?>">Next</a>
+                <a class="pagination__link" href="<?= billo_e($buildUrl($query_for_links, $total_pages)) ?>">Last</a>
+            <?php else: ?>
+                <span class="pagination__muted">Next</span>
+                <span class="pagination__muted">Last</span>
+            <?php endif; ?>
+        </nav>
     </div>
 </section>
 <?php

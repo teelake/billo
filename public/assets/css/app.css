@@ -2749,6 +2749,35 @@ select.input {
     font-variant-numeric: tabular-nums;
     color: var(--color-muted);
 }
+.pagination--full {
+    flex-wrap: wrap;
+}
+.pagination__pages {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+}
+.pagination__page {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    padding: 0.2rem 0.45rem;
+    border-radius: var(--radius-sm, 6px);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-secondary);
+    text-decoration: none;
+}
+.pagination__page:hover {
+    background: rgba(15, 23, 42, 0.06);
+}
+.pagination__page--current {
+    background: rgba(15, 23, 42, 0.1);
+    color: var(--color-text);
+    cursor: default;
+}
 
 .config-grid {
     display: grid;
