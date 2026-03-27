@@ -7,25 +7,41 @@ HOME WORKS BUT /billo/login → HOSTINGER 404
   3) Folder name in URL ≠ folder on disk (Linux: /billo ≠ /Bilo). config app.base_path and RewriteBase must match the real URL segment.
   4) Files are in public_html/billo/public/ — then either move contents up into billo/ OR use URL .../billo/public/login and set base_path /billo/public (not recommended).
 
-WHERE FILES GO
+TWO VALID LAYOUTS
+
+  (1) FULL PROJECT under public_html/billo/ (app, config, public, vendor, …)
+      → Put the project ROOT .htaccess here: public_html/billo/.htaccess
+      → Front controller: public/index.php (do not rely on index.php in billo root)
+      → This is the usual case when you upload the whole Git repo into billo/
+
+  (2) ONLY /public contents under public_html/billo/
+      → Use public/.htaccess from the repo (not the root .htaccess)
+      → index.php sits next to that .htaccess
+      → Use billo-root.php if app/config live outside web root
+
+WHERE FILES GO — layout (1)
   public_html/billo/
-    index.php
-    .htaccess          ← required; same folder as index.php
-    billo-root.php     ← only if you use split deploy (see billo-root.php.example)
-    assets/
-    routing-check.php
+    .htaccess          ← copy from project ROOT (billo/.htaccess), NOT from public/
+    app/
+    config/
+    public/
+      index.php
+      assets/
+    vendor/
+
+  Optional in public/: billo-root.php (split deploy), routing-check.php
 
   config app.base_path: '/billo'  (same spelling/case as in the URL)
 
 HTACCESS FIX ON SERVER
-  1) Re-upload public/.htaccess from this repo into public_html/billo/
+  If layout (1) — full project in public_html/billo/:
+  1) Upload the project ROOT .htaccess (repo file billo/.htaccess) to public_html/billo/.htaccess
+     — NOT public/.htaccess (that file is only for layout 2).
   2) In hPanel File Manager: enable “Show Hidden Files” and confirm .htaccess is there.
-  3) If login still 404: edit .htaccess — uncomment ONE line:
-       RewriteBase /billo/
-     Use the exact path segment you see in the browser (e.g. /Bilo/ if folder is capital B).
+  3) If /billo/login still 404: edit RewriteBase in that file to match your URL (case-sensitive).
 
 FALLBACKRESOURCE
-  This stack also sets FallbackResource index.php so many Hostinger/LiteSpeed setups route /login even when RewriteBase was wrong.
+  The root .htaccess sets FallbackResource public/index.php so deep URLs still hit the front controller when rewrites behave oddly.
 
 VERIFY
   https://www.webspace.ng/billo/routing-check.php  → plain text

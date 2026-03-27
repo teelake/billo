@@ -1,6 +1,10 @@
 <IfModule mod_authz_core.c>
     Require all granted
 </IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Allow from all
+</IfModule>
 
 # Stops /login being treated as "login.something" (MultiViews) and 404ing before rewrite.
 # +FollowSymLinks: required for mod_rewrite on many hosts (Hostinger / LiteSpeed).
@@ -15,11 +19,10 @@ DirectoryIndex index.php
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # If /billo/login still shows Hostinger 404, try BOTH:
-    # (1) Uncomment exactly ONE RewriteBase line — path must match the folder name in the URL (case-sensitive on Linux: /billo not /Bilo).
-    # (2) Or leave both commented; Apache often infers the correct base from this file’s folder.
-    # RewriteBase /billo/
-    # RewriteBase /billo
+    # This file sits next to index.php when ONLY /public was copied into public_html/billo/.
+    # Must match URL segment to that folder and config app.base_path (case-sensitive on Linux).
+    # For install at domain root (DocumentRoot = this folder), use: RewriteBase /
+    RewriteBase /billo/
 
     # Optional: apex → www (edit domain if needed)
     # RewriteCond %{HTTP_HOST} ^webspace\.ng$ [NC]

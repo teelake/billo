@@ -1,11 +1,11 @@
-# If your host’s DocumentRoot is this project folder (parent of /public), uncomment below
-# so requests are forwarded into public/. Prefer setting DocumentRoot to the /public folder instead.
+# =============================================================================
+# USE THIS FILE when the *entire project* lives in public_html/billo/:
+#   billo/app, billo/config, billo/public, billo/vendor, …
+# The web browser URL is then https://example.com/billo/...
 #
-# <IfModule mod_rewrite.c>
-#     RewriteEngine On
-#     RewriteRule ^$ public/index.php [L]
-#     RewriteRule ^((?!public/).+)$ public/$1 [L]
-# </IfModule>
+# Do NOT use this file as the only .htaccess if you copied ONLY the contents
+# of /public/ into public_html/billo/ — in that case use public/.htaccess only.
+# =============================================================================
 
 <IfModule mod_authz_core.c>
     Require all granted
@@ -15,5 +15,28 @@
     Allow from all
 </IfModule>
 
-Options -Indexes +FollowSymLinks
-DirectoryIndex index.php
+Options -Indexes +FollowSymLinks -MultiViews
+DirectoryIndex public/index.php
+
+<IfModule mod_dir.c>
+    FallbackResource public/index.php
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Must match the URL path to this folder (and config app.base_path), e.g. /billo/
+    RewriteBase /billo/
+
+    # Static assets (billo_url points here)
+    RewriteRule ^assets/(.*)$ public/assets/$1 [L]
+
+    # Optional standalone scripts under /public/
+    RewriteRule ^(index\.php|router\.php|routing-check\.php)$ public/$1 [L]
+
+    RewriteRule ^$ public/index.php [L]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ public/index.php [QSA,L]
+</IfModule>
