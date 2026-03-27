@@ -8,6 +8,11 @@ DirectoryIndex index.php
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # Optional: canonical www (matches app.url). Uncomment if you use www.webspace.ng
+    # RewriteCond %{HTTP_HOST} ^webspace\.ng$ [NC]
+    # RewriteRule ^ https://www.webspace.ng%{REQUEST_URI} [L,R=301]
+
     # MUST match the URL path to this folder (no trailing slash). Examples:
     #   Site is https://example.com/billo/  →  RewriteBase /billo
     #   Site is https://example.com/       →  RewriteBase /

@@ -21,10 +21,10 @@ use App\Core\Router;
 use App\Core\Session;
 use App\Services\PlatformSettings;
 
-$root = dirname(__DIR__);
 if (!defined('BILLO_ROOT')) {
-    define('BILLO_ROOT', $root);
+    define('BILLO_ROOT', dirname(__DIR__));
 }
+$root = BILLO_ROOT;
 
 $composerAutoload = $root . '/vendor/autoload.php';
 if (is_file($composerAutoload)) {

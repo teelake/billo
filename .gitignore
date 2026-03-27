@@ -5,3 +5,6 @@ config/
 storage/logs/*
 !storage/logs/.gitkeep
 vendor/
+
+# Split-hosting pointer (see public/billo-root.php.example)
+public/billo-root.php

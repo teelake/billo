@@ -1,0 +1,15 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Split deployment only: web files live in public_html/billo/, the rest of the project elsewhere.
+ * Copy this file to billo-root.php (same folder as index.php) and return the ABSOLUTE path
+ * to the folder that contains app/, config/, vendor/, storage/.
+ *
+ * Hostinger-style example (fix username + domain to match your account):
+ *   return '/home/u232647434/billo';
+ * or:
+ *   return '/home/u232647434/domains/webspace.ng/billo_private';
+ */
+return '';

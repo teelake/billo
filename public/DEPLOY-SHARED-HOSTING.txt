@@ -1,0 +1,32 @@
+Billo on shared hosting (e.g. Hostinger) — https://www.webspace.ng/billo/
+
+WHY YOU SEE THE HOST’S “SKATEBOARD” 404
+  The URL /billo/ is not pointing at Billo’s files. The server looks for a file that does not exist.
+
+OPTION A — BEST: change “document root” for the site so it points at the project’s /public folder
+  Then your URL might be https://www.webspace.ng/ (no /billo) and config app.base_path should be "".
+  Recopy public/.htaccess with RewriteBase /
+
+OPTION B — SUBFOLDER /billo/ (your case: www.webspace.ng/billo)
+  1) ABOVE public_html (not web-accessible), create a folder, e.g. billo_private, containing:
+       app/  config/  vendor/  storage/  (and database, composer.json if you use CLI there)
+  2) Inside public_html create folder billo/ and upload EVERYTHING from this repo’s public/:
+       index.php  .htaccess  assets/  router.php  routing-check.php  …
+  3) Copy public/billo-root.php.example to public_html/billo/billo-root.php
+     Edit it to return the ABSOLUTE server path to billo_private, e.g.:
+       return '/home/USERNAME/billo_private';
+     (In Hostinger File Manager: open billo_private → note full path from sidebar or parent folders)
+  4) On the server, in billo_private, ensure config/config.php exists (upload from your PC).
+  5) config app.url = 'https://www.webspace.ng'
+     config app.base_path = '/billo'
+  6) Visit https://www.webspace.ng/billo/routing-check.php — you should see plain text, not the host 404.
+
+WWW
+  Use https://www.webspace.ng in app.url so links and redirects match what you want.
+  Optional: in public/.htaccess uncomment the RewriteCond/RewriteRule block to force www.
+
+REWRITE
+  public/.htaccess must sit in public_html/billo/. RewriteBase /billo
+
+SECURITY
+  Never put app/, config/, vendor/ inside public_html unless you know the risk.

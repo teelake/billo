@@ -11,8 +11,8 @@ return [
         'name' => 'billo',
         'env' => 'local',
         'debug' => true,
-        /** Full origin, no trailing slash — used for redirects and emails */
-        'url' => 'https://webspace.ng',
+        /** Full origin, no trailing slash — use www if that is your canonical host */
+        'url' => 'https://www.webspace.ng',
         /**
          * URL path where the app is mounted (no trailing slash).
          * Example: https://webspace.ng/billo → base_path is "/billo"
