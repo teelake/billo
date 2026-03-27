@@ -2,37 +2,119 @@
 declare(strict_types=1);
 
 use App\Core\Csrf;
+use App\Core\Session;
 
-/** @var string $active dashboard|team|clients|invoices|organization */
+/** @var string $active dashboard|team|clients|invoices|organization|system|platform */
 /** @var bool $show_team_nav */
 /** @var string $user_name */
 /** @var string $role */
+
+$active = $active ?? '';
+$role = $role ?? '';
+$userName = $user_name ?? '';
+$userEmail = isset($user_email) && is_string($user_email) ? $user_email : (string) Session::get('user_email', '');
+$showTeam = !empty($show_team_nav);
+$canOrg = in_array($role, ['owner', 'admin'], true);
+$canPlatform = (function_exists('billo_is_platform_admin') && billo_is_platform_admin())
+    || (function_exists('billo_is_system_admin') && billo_is_system_admin());
+$isSystem = function_exists('billo_is_system_admin') && billo_is_system_admin();
+
+$initials = 'B';
+if ($userName !== '') {
+    $parts = preg_split('/\s+/u', trim($userName)) ?: [];
+    $initials = strtoupper(
+        mb_substr($parts[0] ?? '?', 0, 1, 'UTF-8')
+        . mb_substr($parts[count($parts) > 1 ? count($parts) - 1 : 0] ?? '', 0, 1, 'UTF-8')
+    );
+} elseif ($userEmail !== '') {
+    $initials = strtoupper(mb_substr($userEmail, 0, 1, 'UTF-8'));
+}
+if (function_exists('mb_strlen') && mb_strlen($initials, 'UTF-8') > 2) {
+    $initials = mb_substr($initials, 0, 2, 'UTF-8');
+}
 ?>
-<header class="app-topbar">
-    <div class="container app-topbar__inner">
-        <div class="app-topbar__left">
-            <a class="wordmark" href="<?= billo_e(billo_url('/dashboard')) ?>"><?= billo_e(billo_brand_name()) ?></a>
-            <nav class="app-subnav" aria-label="App">
-                <a class="app-subnav__link<?= ($active ?? '') === 'dashboard' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/dashboard')) ?>">Dashboard</a>
-                <a class="app-subnav__link<?= ($active ?? '') === 'clients' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/clients')) ?>">Clients</a>
-                <a class="app-subnav__link<?= ($active ?? '') === 'invoices' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/invoices')) ?>">Invoices</a>
-                <?php if (in_array($role ?? '', ['owner', 'admin'], true)): ?>
-                    <a class="app-subnav__link<?= ($active ?? '') === 'organization' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/organization')) ?>">Business</a>
+<aside class="app-sidebar" id="app-sidebar" aria-label="Main navigation">
+    <div class="app-sidebar__brand">
+        <a class="app-sidebar__wordmark" href="<?= billo_e(billo_url('/dashboard')) ?>"><?= billo_e(billo_brand_name()) ?></a>
+    </div>
+    <nav class="app-sidebar__nav" aria-label="App sections">
+        <a class="app-sidebar__link<?= $active === 'dashboard' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/dashboard')) ?>">
+            <span class="app-sidebar__icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </span>
+            Dashboard
+        </a>
+        <a class="app-sidebar__link<?= $active === 'clients' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/clients')) ?>">
+            <span class="app-sidebar__icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </span>
+            Clients
+        </a>
+        <a class="app-sidebar__link<?= $active === 'invoices' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/invoices')) ?>">
+            <span class="app-sidebar__icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </span>
+            Invoices
+        </a>
+        <?php if ($canOrg): ?>
+            <a class="app-sidebar__link<?= $active === 'organization' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/organization')) ?>">
+                <span class="app-sidebar__icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                </span>
+                Business
+            </a>
+        <?php endif; ?>
+        <?php if ($showTeam): ?>
+            <a class="app-sidebar__link<?= $active === 'team' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/team')) ?>">
+                <span class="app-sidebar__icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </span>
+                Team
+            </a>
+        <?php endif; ?>
+        <?php if ($canPlatform): ?>
+            <a class="app-sidebar__link<?= $active === 'platform' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/platform/landing')) ?>">
+                <span class="app-sidebar__icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="10" y1="8" x2="16" y2="8"/><line x1="10" y1="12" x2="16" y2="12"/></svg>
+                </span>
+                Landing page
+            </a>
+        <?php endif; ?>
+        <?php if ($isSystem): ?>
+            <a class="app-sidebar__link<?= $active === 'system' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/system')) ?>">
+                <span class="app-sidebar__icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                </span>
+                System
+            </a>
+        <?php endif; ?>
+    </nav>
+    <div class="app-sidebar__scrim" id="app-sidebar-scrim" hidden aria-hidden="true"></div>
+</aside>
+
+<header class="app-topstrip">
+    <div class="app-topstrip__inner">
+        <button type="button" class="app-sidebar-toggle" id="app-sidebar-toggle" aria-expanded="false" aria-controls="app-sidebar" aria-label="Open menu">
+            <span class="nav-toggle__bar"></span>
+            <span class="nav-toggle__bar"></span>
+        </button>
+        <div class="app-topstrip__spacer" aria-hidden="true"></div>
+        <details class="app-profile">
+            <summary class="app-profile__trigger" aria-label="Account menu">
+                <span class="app-profile__avatar" aria-hidden="true"><?= billo_e($initials) ?></span>
+            </summary>
+            <div class="app-profile__dropdown">
+                <p class="app-profile__name"><?= billo_e($userName !== '' ? $userName : 'Account') ?></p>
+                <?php if ($userEmail !== ''): ?>
+                    <p class="app-profile__email"><?= billo_e($userEmail) ?></p>
                 <?php endif; ?>
-                <?php if (!empty($show_team_nav)): ?>
-                    <a class="app-subnav__link<?= ($active ?? '') === 'team' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/team')) ?>">Team</a>
-                <?php endif; ?>
-                <?php if (function_exists('billo_is_system_admin') && billo_is_system_admin()): ?>
-                    <a class="app-subnav__link<?= ($active ?? '') === 'system' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/system')) ?>">System</a>
-                <?php endif; ?>
-            </nav>
-        </div>
-        <div class="app-topbar__user">
-            <span class="app-topbar__meta"><?= billo_e($user_name) ?> · <span class="capitalize"><?= billo_e($role) ?></span></span>
-            <form method="post" action="<?= billo_e(billo_url('/logout')) ?>" class="inline-form">
-                <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
-                <button type="submit" class="btn btn--ghost btn--sm">Log out</button>
-            </form>
-        </div>
+                <p class="app-profile__role"><span class="capitalize"><?= billo_e($role) ?></span></p>
+                <hr class="app-profile__rule">
+                <form method="post" action="<?= billo_e(billo_url('/logout')) ?>" class="app-profile__logout">
+                    <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
+                    <button type="submit" class="btn btn--ghost btn--sm btn--block">Log out</button>
+                </form>
+            </div>
+        </details>
     </div>
 </header>

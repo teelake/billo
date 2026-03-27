@@ -16,7 +16,7 @@ ob_start();
 ?>
 <section class="app-dashboard">
     <?php
-    $active = 'dashboard';
+    $active = 'platform';
     include dirname(__DIR__) . '/partials/app_topbar.php';
     ?>
     <div class="container app-dashboard__body">

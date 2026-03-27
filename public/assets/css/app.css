@@ -778,11 +778,11 @@ a:hover {
     box-shadow: var(--shadow-md);
 }
 
-/* Signup: wider card so two-column row + email/password copy breathe (login stays 400px) */
+/* Signup: wider card (login stays 400px) */
 .auth-card--signup {
     width: min(100%, 44rem);
     max-width: 100%;
-    padding: clamp(1.75rem, 3.5vw, 2.5rem);
+    padding: clamp(1.75rem, 3.5vw, 2.75rem);
 }
 
 /* Signup page: prioritize fitting in one viewport on laptops & phones (body.layout-auth--signup) */
@@ -797,64 +797,81 @@ a:hover {
 }
 
 .layout-auth--signup .auth-shell__panel {
-    align-items: flex-start;
-    padding: clamp(0.5rem, 2vh, 1.25rem) clamp(0.85rem, 2.5vw, 1.75rem);
+    align-items: center;
+    justify-content: center;
+    padding: clamp(1rem, 3vh, 2rem) clamp(0.85rem, 2.5vw, 1.75rem);
 }
 
 .layout-auth--signup .auth-card--signup {
-    padding: clamp(1rem, 2.2vh, 1.65rem) clamp(1.1rem, 2.6vw, 1.85rem);
+    display: flex;
+    flex-direction: column;
+    padding: clamp(1.65rem, 3.5vh, 2.5rem) clamp(1.35rem, 3vw, 2.35rem);
+    min-height: clamp(30rem, 58dvh, 40rem);
 }
 
 .layout-auth--signup .auth-card__title {
-    font-size: clamp(1.2rem, 2.8vw, 1.4rem);
-    margin: 0 0 0.2rem;
+    font-size: clamp(1.3rem, 2.8vw, 1.5rem);
+    margin: 0 0 0.35rem;
 }
 
 .layout-auth--signup .auth-card__subtitle {
-    margin: 0 0 0.6rem;
-    font-size: 0.875rem;
-    line-height: 1.35;
+    margin: 0 0 1rem;
+    font-size: 0.92rem;
+    line-height: 1.45;
 }
 
 .layout-auth--signup .form {
-    gap: 0.5rem;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    min-height: 0;
 }
 
 .layout-auth--signup .form .btn--primary {
-    margin-top: 0.15rem;
-    padding: 0.55rem 1rem;
-    font-size: 0.9rem;
+    margin-top: auto;
+    padding: 0.65rem 1.1rem;
+    font-size: 0.95rem;
 }
 
 .layout-auth--signup .field {
-    gap: 0.18rem;
+    gap: 0.32rem;
 }
 
 .layout-auth--signup .input {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.9375rem;
+    padding: 0.62rem 0.85rem;
+    font-size: 1rem;
 }
 
 .layout-auth--signup .label {
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
 }
 
 .layout-auth--signup .hint,
 .layout-auth--signup .signup-password-block__hint {
-    font-size: 0.75rem;
-    line-height: 1.35;
-    margin: 0.12rem 0 0;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    margin: 0.2rem 0 0;
 }
 
 .layout-auth--signup .field-feedback {
     min-height: 0;
-    font-size: 0.75rem;
-    line-height: 1.2;
+    font-size: 0.78rem;
+    line-height: 1.35;
 }
 
 .layout-auth--signup .auth-card__footer {
-    margin-top: 0.6rem;
-    font-size: 0.85rem;
+    margin-top: 1.15rem;
+    padding-top: 0.15rem;
+    font-size: 0.9rem;
+}
+
+.layout-auth--signup .signup-password-block {
+    gap: 0.35rem;
+}
+
+.layout-auth--signup .field-grid--signup-pw {
+    gap: 0.85rem;
 }
 
 .layout-auth--signup .alert.alert--error {
@@ -900,6 +917,17 @@ a:hover {
         font-size: 0.95rem;
         line-height: 1.45;
         margin-top: 0.3rem;
+    }
+}
+
+/* Short viewports: drop forced min-height so the page doesn’t over-scroll */
+@media (max-height: 700px) {
+    .layout-auth--signup .auth-card--signup {
+        min-height: unset;
+    }
+
+    .layout-auth--signup .auth-shell__panel {
+        align-items: flex-start;
     }
 }
 
