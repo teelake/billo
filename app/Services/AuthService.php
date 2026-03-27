@@ -13,6 +13,7 @@ use App\Repositories\MemberRepository;
 use App\Repositories\OrganizationRepository;
 use App\Repositories\PasswordResetRepository;
 use App\Repositories\UserRepository;
+use App\Support\PasswordRules;
 use App\Support\SecureToken;
 use DateInterval;
 use DateTimeImmutable;
@@ -70,8 +71,9 @@ final class AuthService
         if (!$this->isValidEmail($email)) {
             return 'Please enter a valid email address.';
         }
-        if (self::len($password) < 10) {
-            return 'Password must be at least 10 characters.';
+        $pwdErr = PasswordRules::validate($password);
+        if ($pwdErr !== null) {
+            return $pwdErr;
         }
         if ($name === '' || self::len($name) > 120) {
             return 'Please enter your name.';
@@ -143,8 +145,9 @@ final class AuthService
         if (!$this->isValidEmail($email)) {
             return 'Please enter a valid email address.';
         }
-        if (self::len($password) < 10) {
-            return 'Password must be at least 10 characters.';
+        $pwdErr = PasswordRules::validate($password);
+        if ($pwdErr !== null) {
+            return $pwdErr;
         }
         if ($name === '' || self::len($name) > 120) {
             return 'Please enter your name.';
@@ -278,8 +281,9 @@ final class AuthService
         if ($plainToken === '') {
             return 'Invalid reset link.';
         }
-        if (self::len($newPassword) < 10) {
-            return 'Password must be at least 10 characters.';
+        $pwdErr = PasswordRules::validate($newPassword);
+        if ($pwdErr !== null) {
+            return $pwdErr;
         }
 
         $row = $this->passwordResets->findValidEmailByTokenHash(SecureToken::hash($plainToken));

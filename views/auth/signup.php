@@ -25,31 +25,36 @@ ob_start();
     <?php if ($error !== ''): ?>
         <div class="alert alert--error" role="alert"><?= billo_e($error) ?></div>
     <?php endif; ?>
-    <form class="form" method="post" action="<?= billo_e(billo_url('/signup')) ?>" novalidate>
+    <form class="form" method="post" action="<?= billo_e(billo_url('/signup')) ?>" novalidate data-signup-form>
         <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
         <div class="field">
             <label class="label" for="name">Your name</label>
-            <input class="input" id="name" name="name" type="text" autocomplete="name" required maxlength="120" value="<?= billo_e($name) ?>">
+            <input class="input" id="name" name="name" type="text" autocomplete="name" required maxlength="120" value="<?= billo_e($name) ?>" aria-describedby="name-feedback">
+            <p class="field-feedback" id="name-feedback" role="status" aria-live="polite"></p>
         </div>
         <?php if (!$isInvite): ?>
             <div class="field">
                 <label class="label" for="organization_name">Organization name</label>
-                <input class="input" id="organization_name" name="organization_name" type="text" autocomplete="organization" required maxlength="200" value="<?= billo_e($organization_name) ?>">
+                <input class="input" id="organization_name" name="organization_name" type="text" autocomplete="organization" required maxlength="200" value="<?= billo_e($organization_name) ?>" aria-describedby="organization-feedback">
+                <p class="field-feedback" id="organization-feedback" role="status" aria-live="polite"></p>
             </div>
         <?php endif; ?>
         <div class="field">
             <label class="label" for="email">Work email</label>
-            <input class="input" id="email" name="email" type="email" autocomplete="email" required value="<?= billo_e($email) ?>"<?= $isInvite ? ' readonly aria-readonly="true"' : '' ?>>
+            <input class="input" id="email" name="email" type="email" inputmode="email" autocomplete="email" required value="<?= billo_e($email) ?>" aria-describedby="email-feedback" <?= $isInvite ? 'readonly aria-readonly="true"' : '' ?>>
+            <p class="field-feedback" id="email-feedback" role="status" aria-live="polite"></p>
         </div>
         <div class="field-grid">
             <div class="field">
                 <label class="label" for="password">Password</label>
-                <input class="input" id="password" name="password" type="password" autocomplete="new-password" required minlength="10" aria-describedby="password-hint">
-                <p class="hint" id="password-hint">At least 10 characters.</p>
+                <input class="input" id="password" name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128" aria-describedby="password-hint password-strength">
+                <p class="hint" id="password-hint">At least 10 characters, with letters and numbers. Include an uppercase letter or a symbol (e.g. ! @ #) so it’s not easy to guess.</p>
+                <p class="field-feedback" id="password-strength" role="status" aria-live="polite"></p>
             </div>
             <div class="field">
                 <label class="label" for="password_confirm">Confirm password</label>
-                <input class="input" id="password_confirm" name="password_confirm" type="password" autocomplete="new-password" required minlength="10">
+                <input class="input" id="password_confirm" name="password_confirm" type="password" autocomplete="new-password" required minlength="10" maxlength="128" aria-describedby="password-confirm-feedback">
+                <p class="field-feedback" id="password-confirm-feedback" role="status" aria-live="polite"></p>
             </div>
         </div>
         <button class="btn btn--primary btn--block" type="submit"><?= $isInvite ? 'Join organization' : 'Create account' ?></button>

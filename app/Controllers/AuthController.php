@@ -10,6 +10,7 @@ use App\Core\Request;
 use App\Core\Session;
 use App\Core\View;
 use App\Services\AuthService;
+use App\Support\PasswordRules;
 use PDOException;
 
 final class AuthController extends Controller
@@ -142,7 +143,14 @@ final class AuthController extends Controller
             ]);
         };
 
-        if ($password !== $passwordConfirm) {
+        $pwdErr = PasswordRules::validate($password ?? '');
+        if ($pwdErr !== null) {
+            Session::flash('error', $pwdErr);
+            $preserveOld();
+            $this->redirect('/signup');
+        }
+
+        if (($password ?? '') !== ($passwordConfirm ?? '')) {
             Session::flash('error', 'Passwords do not match.');
             $preserveOld();
             $this->redirect('/signup');
@@ -231,7 +239,13 @@ final class AuthController extends Controller
         $password = $this->request->input('password', '');
         $passwordConfirm = $this->request->input('password_confirm', '');
 
-        if ($password !== $passwordConfirm) {
+        $pwdErr = PasswordRules::validate($password ?? '');
+        if ($pwdErr !== null) {
+            Session::flash('error', $pwdErr);
+            $this->redirect('/reset-password?token=' . rawurlencode($token ?? ''));
+        }
+
+        if (($password ?? '') !== ($passwordConfirm ?? '')) {
             Session::flash('error', 'Passwords do not match.');
             $this->redirect('/reset-password?token=' . rawurlencode($token ?? ''));
         }
