@@ -89,7 +89,7 @@ if (function_exists('mb_strlen') && mb_strlen($initials, 'UTF-8') > 2) {
             </a>
         <?php endif; ?>
     </nav>
-    <div class="app-sidebar__scrim" id="app-sidebar-scrim" hidden aria-hidden="true"></div>
+    <button type="button" class="app-sidebar__scrim" id="app-sidebar-scrim" hidden aria-label="Close menu" tabindex="-1"></button>
 </aside>
 
 <header class="app-topstrip">

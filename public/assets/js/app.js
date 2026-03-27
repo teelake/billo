@@ -350,3 +350,67 @@
     document.querySelectorAll("form[data-signup-form]").forEach(initSignupForm);
     document.querySelectorAll("form[data-password-reset-form]").forEach(initPasswordResetForm);
 })();
+
+/** App sidebar (dashboard) + mobile overlay */
+(function () {
+    const sidebar = document.getElementById("app-sidebar");
+    const toggle = document.getElementById("app-sidebar-toggle");
+    const scrim = document.getElementById("app-sidebar-scrim");
+    if (!sidebar || !toggle) {
+        return;
+    }
+
+    const mq = window.matchMedia("(max-width: 900px)");
+
+    const setOpen = (open) => {
+        sidebar.classList.toggle("is-open", open);
+        toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+        if (mq.matches) {
+            sidebar.setAttribute("aria-hidden", open ? "false" : "true");
+        } else {
+            sidebar.removeAttribute("aria-hidden");
+        }
+        if (scrim) {
+            scrim.toggleAttribute("hidden", !open || !mq.matches);
+            if (open && mq.matches) {
+                scrim.removeAttribute("tabindex");
+            } else {
+                scrim.setAttribute("tabindex", "-1");
+            }
+        }
+    };
+
+    toggle.addEventListener("click", () => {
+        setOpen(!sidebar.classList.contains("is-open"));
+    });
+
+    if (scrim) {
+        scrim.addEventListener("click", () => setOpen(false));
+    }
+
+    sidebar.querySelectorAll("a.app-sidebar__link").forEach((link) => {
+        link.addEventListener("click", () => {
+            if (mq.matches) {
+                setOpen(false);
+            }
+        });
+    });
+
+    const onMq = () => {
+        if (!mq.matches) {
+            setOpen(false);
+        }
+    };
+    mq.addEventListener("change", onMq);
+    onMq();
+    if (mq.matches) {
+        setOpen(false);
+    }
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && sidebar.classList.contains("is-open")) {
+            setOpen(false);
+        }
+    });
+})();
