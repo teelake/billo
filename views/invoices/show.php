@@ -44,6 +44,7 @@ ob_start();
                 </p>
             </div>
             <div class="page-head__actions">
+                <a class="btn btn--secondary" href="<?= billo_e(billo_url('/invoices/print?id=' . $invId)) ?>" target="_blank" rel="noopener noreferrer">Print / PDF</a>
                 <a class="btn btn--secondary" href="<?= billo_e(billo_url('/invoices')) ?>">All invoices</a>
                 <?php if ($can_manage && $status === 'draft'): ?>
                     <a class="btn btn--primary" href="<?= billo_e(billo_url('/invoices/edit?id=' . $invId)) ?>">Edit draft</a>
@@ -106,6 +107,17 @@ ob_start();
 
         <?php if ($can_manage): ?>
             <div class="invoice-actions welcome-card" style="margin-top:1.25rem">
+                <?php
+                $clientEmail = isset($invoice['client_email']) ? trim((string) $invoice['client_email']) : '';
+                $canEmail = $status !== 'void' && $clientEmail !== '' && filter_var($clientEmail, FILTER_VALIDATE_EMAIL);
+                ?>
+                <?php if ($canEmail): ?>
+                    <form method="post" action="<?= billo_e(billo_url('/invoices/email')) ?>" class="inline-form" onsubmit="return confirm('Email this invoice to the client now?');">
+                        <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
+                        <input type="hidden" name="id" value="<?= $invId ?>">
+                        <button type="submit" class="btn btn--secondary">Email to client</button>
+                    </form>
+                <?php endif; ?>
                 <?php if ($status === 'draft'): ?>
                     <form method="post" action="<?= billo_e(billo_url('/invoices/send')) ?>" class="inline-form">
                         <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">

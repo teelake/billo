@@ -11,6 +11,8 @@ use App\Core\Session;
 use App\Core\View;
 use App\Repositories\ClientRepository;
 use App\Repositories\InvoiceRepository;
+use App\Repositories\OrganizationRepository;
+use App\Services\EmailNotifications;
 
 final class InvoiceController extends Controller
 {
@@ -18,6 +20,8 @@ final class InvoiceController extends Controller
         private Request $request,
         private InvoiceRepository $invoices = new InvoiceRepository(),
         private ClientRepository $clients = new ClientRepository(),
+        private OrganizationRepository $organizations = new OrganizationRepository(),
+        private EmailNotifications $emailNotifications = new EmailNotifications(),
     ) {
     }
 
@@ -315,6 +319,76 @@ final class InvoiceController extends Controller
             Session::flash('success', 'Invoice voided.');
         } else {
             Session::flash('error', 'Could not void this invoice.');
+        }
+        $this->redirect('/invoices/show?id=' . $id);
+    }
+
+    /** Print-ready HTML; use browser Print → Save as PDF. */
+    public function printView(): void
+    {
+        $ctx = $this->requireAuth();
+        $id = $this->intIdFromRequest();
+        if ($id === null) {
+            Session::flash('error', 'Invalid invoice.');
+            $this->redirect('/invoices');
+        }
+
+        $invoice = $this->invoices->findWithLines($id, $ctx['organization_id']);
+        if ($invoice === null) {
+            Session::flash('error', 'Invoice not found.');
+            $this->redirect('/invoices');
+        }
+
+        $org = $this->organizations->findById($ctx['organization_id']);
+        $orgName = is_array($org) ? (string) ($org['name'] ?? '') : '';
+
+        View::render('invoices/print', [
+            'invoice' => $invoice,
+            'organization_name' => $orgName,
+        ]);
+    }
+
+    public function emailClient(): void
+    {
+        $ctx = $this->requireAuth();
+        if (!$this->canManageInvoices($ctx['role'])) {
+            $this->redirect('/invoices');
+        }
+        if (!$this->validateCsrf()) {
+            Session::flash('error', 'Invalid session. Please try again.');
+            $this->redirect('/invoices');
+        }
+
+        $id = $this->intIdFromRequest();
+        if ($id === null) {
+            Session::flash('error', 'Invalid invoice.');
+            $this->redirect('/invoices');
+        }
+
+        $invoice = $this->invoices->findWithLines($id, $ctx['organization_id']);
+        if ($invoice === null) {
+            Session::flash('error', 'Invoice not found.');
+            $this->redirect('/invoices');
+        }
+
+        if (($invoice['status'] ?? '') === 'void') {
+            Session::flash('error', 'Void invoices cannot be emailed.');
+            $this->redirect('/invoices/show?id=' . $id);
+        }
+
+        $to = strtolower(trim((string) ($invoice['client_email'] ?? '')));
+        if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            Session::flash('error', 'This client needs a valid email address on file.');
+            $this->redirect('/invoices/show?id=' . $id);
+        }
+
+        $org = $this->organizations->findById($ctx['organization_id']);
+        $orgName = is_array($org) && ($org['name'] ?? '') !== '' ? (string) $org['name'] : billo_brand_name();
+
+        if ($this->emailNotifications->sendInvoiceToClient($to, $orgName, $invoice)) {
+            Session::flash('success', 'Invoice emailed to ' . $to . '.');
+        } else {
+            Session::flash('error', 'Could not send email. Check mail configuration.');
         }
         $this->redirect('/invoices/show?id=' . $id);
     }

@@ -65,6 +65,122 @@ final class EmailNotifications
         $this->mail->send($toEmail, $subject, $html, $text);
     }
 
+    /**
+     * @param array<string, mixed> $invoice row from InvoiceRepository::findWithLines (includes lines)
+     */
+    public function sendInvoiceToClient(string $toEmail, string $organizationName, array $invoice): bool
+    {
+        $app = (string) Config::get('app.name', 'billo');
+        $num = (string) ($invoice['invoice_number'] ?? 'Invoice');
+        $subject = "{$num} from {$organizationName} — {$app}";
+
+        $currency = (string) ($invoice['currency'] ?? 'NGN');
+        $issue = (string) ($invoice['issue_date'] ?? '');
+        $due = isset($invoice['due_date']) && $invoice['due_date'] !== null && $invoice['due_date'] !== ''
+            ? (string) $invoice['due_date'] : '';
+        $status = (string) ($invoice['status'] ?? '');
+
+        $clientBits = array_filter([
+            $invoice['client_name'] ?? '',
+            $invoice['client_company'] ?? '',
+        ], static fn ($v) => is_string($v) && $v !== '');
+        $clientLine = $clientBits !== [] ? implode(' · ', $clientBits) : 'Client';
+
+        /** @var list<array<string, mixed>> $lines */
+        $lines = isset($invoice['lines']) && is_array($invoice['lines']) ? $invoice['lines'] : [];
+
+        $text = "Invoice {$num}\nFrom: {$organizationName}\n\n";
+        $text .= "Bill to: {$clientLine}\n";
+        $text .= "Issue date: {$issue}\n";
+        if ($due !== '') {
+            $text .= "Due date: {$due}\n";
+        }
+        $text .= "Status: {$status}\n\n";
+        foreach ($lines as $ln) {
+            $desc = (string) ($ln['description'] ?? '');
+            $qty = (float) ($ln['quantity'] ?? 0);
+            $unit = (float) ($ln['unit_amount'] ?? 0);
+            $lt = (float) ($ln['line_total'] ?? 0);
+            $text .= sprintf(
+                "- %s | qty %s × %s %s = %s %s\n",
+                $desc,
+                rtrim(rtrim(sprintf('%.4f', $qty), '0'), '.') ?: '0',
+                $currency,
+                number_format($unit, 2),
+                $currency,
+                number_format($lt, 2),
+            );
+        }
+        $text .= sprintf(
+            "\nSubtotal: %s %s\nTax: %s %s\nTotal: %s %s\n",
+            $currency,
+            number_format((float) ($invoice['subtotal'] ?? 0), 2),
+            $currency,
+            number_format((float) ($invoice['tax_total'] ?? 0), 2),
+            $currency,
+            number_format((float) ($invoice['total'] ?? 0), 2),
+        );
+        if (!empty($invoice['notes'])) {
+            $text .= "\nNotes:\n" . (string) $invoice['notes'] . "\n";
+        }
+        $text .= "\n—\nSent via {$app}\n";
+
+        $h = static function (string $s): string {
+            return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        };
+
+        $rowsHtml = '';
+        foreach ($lines as $ln) {
+            $desc = (string) ($ln['description'] ?? '');
+            $qty = (float) ($ln['quantity'] ?? 0);
+            $unit = (float) ($ln['unit_amount'] ?? 0);
+            $tax = (float) ($ln['tax_rate'] ?? 0);
+            $lt = (float) ($ln['line_total'] ?? 0);
+            $rowsHtml .= '<tr>'
+                . '<td style="padding:10px 12px;border-bottom:1px solid #e2e8f0">' . $h($desc) . '</td>'
+                . '<td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-variant-numeric:tabular-nums">' . $h(rtrim(rtrim(sprintf('%.4f', $qty), '0'), '.') ?: '0') . '</td>'
+                . '<td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-variant-numeric:tabular-nums">' . $h($currency . ' ' . number_format($unit, 2)) . '</td>'
+                . '<td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-variant-numeric:tabular-nums">' . $h(number_format($tax, 2)) . '%</td>'
+                . '<td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">' . $h($currency . ' ' . number_format($lt, 2)) . '</td>'
+                . '</tr>';
+        }
+
+        $notesHtml = '';
+        if (!empty($invoice['notes'])) {
+            $notesHtml = '<h3 style="margin:24px 0 8px;font-size:14px;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Notes</h3>'
+                . '<p style="margin:0;white-space:pre-wrap;color:#334155">' . $h((string) $invoice['notes']) . '</p>';
+        }
+
+        $html = '<div style="font-family:Inter,system-ui,sans-serif;max-width:640px;color:#0f172a;line-height:1.55">'
+            . '<p style="margin:0 0 8px;font-size:13px;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Invoice</p>'
+            . '<h1 style="margin:0 0 4px;font-size:26px;font-weight:700;letter-spacing:-.02em">' . $h($num) . '</h1>'
+            . '<p style="margin:0 0 20px;color:#334155">From <strong>' . $h($organizationName) . '</strong></p>'
+            . '<table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:15px">'
+            . '<tr><td style="padding:4px 0;color:#64748b;width:40%">Bill to</td><td style="padding:4px 0">' . $h($clientLine) . '</td></tr>'
+            . '<tr><td style="padding:4px 0;color:#64748b">Issue date</td><td style="padding:4px 0">' . $h($issue) . '</td></tr>'
+            . ($due !== '' ? '<tr><td style="padding:4px 0;color:#64748b">Due date</td><td style="padding:4px 0">' . $h($due) . '</td></tr>' : '')
+            . '<tr><td style="padding:4px 0;color:#64748b">Status</td><td style="padding:4px 0">' . $h($status) . '</td></tr>'
+            . '</table>'
+            . '<table style="width:100%;border-collapse:collapse;margin-top:20px;font-size:14px">'
+            . '<thead><tr>'
+            . '<th style="text-align:left;padding:10px 12px;background:#f1f5f9;border-bottom:2px solid #e2e8f0">Item</th>'
+            . '<th style="text-align:right;padding:10px 12px;background:#f1f5f9;border-bottom:2px solid #e2e8f0">Qty</th>'
+            . '<th style="text-align:right;padding:10px 12px;background:#f1f5f9;border-bottom:2px solid #e2e8f0">Unit</th>'
+            . '<th style="text-align:right;padding:10px 12px;background:#f1f5f9;border-bottom:2px solid #e2e8f0">Tax</th>'
+            . '<th style="text-align:right;padding:10px 12px;background:#f1f5f9;border-bottom:2px solid #e2e8f0">Total</th>'
+            . '</tr></thead><tbody>' . $rowsHtml . '</tbody></table>'
+            . '<table style="width:100%;max-width:280px;margin-left:auto;margin-top:16px;font-size:15px">'
+            . '<tr><td style="padding:6px 0;color:#64748b">Subtotal</td><td style="padding:6px 0;text-align:right;font-variant-numeric:tabular-nums">' . $h($currency . ' ' . number_format((float) ($invoice['subtotal'] ?? 0), 2)) . '</td></tr>'
+            . '<tr><td style="padding:6px 0;color:#64748b">Tax</td><td style="padding:6px 0;text-align:right;font-variant-numeric:tabular-nums">' . $h($currency . ' ' . number_format((float) ($invoice['tax_total'] ?? 0), 2)) . '</td></tr>'
+            . '<tr><td style="padding:10px 0 6px;font-weight:700;font-size:17px">Total</td><td style="padding:10px 0 6px;text-align:right;font-weight:700;font-size:17px;font-variant-numeric:tabular-nums">' . $h($currency . ' ' . number_format((float) ($invoice['total'] ?? 0), 2)) . '</td></tr>'
+            . '</table>'
+            . $notesHtml
+            . '<p style="margin:28px 0 0;font-size:13px;color:#94a3b8">Sent via ' . $h($app) . '</p>'
+            . '</div>';
+
+        return $this->mail->send($toEmail, $subject, $html, $text);
+    }
+
     private function url(string $path): string
     {
         $base = rtrim((string) Config::get('app.url', ''), '/');

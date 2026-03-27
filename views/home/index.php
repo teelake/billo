@@ -59,7 +59,7 @@ ob_start();
             <article class="feature-card">
                 <div class="feature-card__icon" aria-hidden="true">⎙</div>
                 <h3 class="feature-card__title">Share anywhere</h3>
-                <p class="feature-card__text">PDF, image, email, WhatsApp-friendly flows (coming next).</p>
+                <p class="feature-card__text">Print-ready invoices and email-to-client from your dashboard—PDF via your browser where you need it.</p>
             </article>
         </div>
     </div>
