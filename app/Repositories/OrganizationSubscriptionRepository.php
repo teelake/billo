@@ -28,7 +28,8 @@ final class OrganizationSubscriptionRepository
         try {
             $st = Database::pdo()->prepare(
                 'SELECT s.*, p.slug AS plan_slug, p.name AS plan_name, p.description AS plan_description,
-                        p.price_amount, p.currency AS plan_currency, p.billing_interval, p.max_invoices_per_month
+                        p.price_amount, p.currency AS plan_currency, p.billing_interval, p.max_invoices_per_month,
+                        p.nrs_integration_allowed, p.nrs_requires_organization_tax_id
                  FROM organization_subscriptions s
                  INNER JOIN subscription_plans p ON p.id = s.plan_id
                  WHERE s.organization_id = :id LIMIT 1'

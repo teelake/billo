@@ -33,8 +33,6 @@ CREATE TABLE IF NOT EXISTS organizations (
     invoice_number_prefix VARCHAR(20) NOT NULL DEFAULT 'INV',
     invoice_next_number INT UNSIGNED NOT NULL DEFAULT 1,
     nrs_enabled TINYINT(1) NOT NULL DEFAULT 0,
-    nrs_api_base_url VARCHAR(500) NULL DEFAULT NULL,
-    nrs_bearer_token VARCHAR(500) NULL DEFAULT NULL,
     nrs_tenant_external_id VARCHAR(120) NULL DEFAULT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -263,21 +261,37 @@ CREATE TABLE IF NOT EXISTS subscription_plans (
     features_json JSON NULL,
     sort_order SMALLINT NOT NULL DEFAULT 0,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
+    nrs_integration_allowed TINYINT(1) NOT NULL DEFAULT 0,
+    nrs_requires_organization_tax_id TINYINT(1) NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY subscription_plans_slug (slug),
     KEY subscription_plans_active_sort (is_active, sort_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO subscription_plans (slug, name, description, price_amount, currency, billing_interval, sort_order, is_active)
-SELECT v.slug, v.name, v.description, v.price_amount, v.currency, v.billing_interval, v.sort_order, v.is_active
+INSERT INTO subscription_plans (slug, name, description, price_amount, currency, billing_interval, sort_order, is_active, nrs_integration_allowed, nrs_requires_organization_tax_id)
+SELECT v.slug, v.name, v.description, v.price_amount, v.currency, v.billing_interval, v.sort_order, v.is_active, v.nrs_a, v.nrs_tax
 FROM (
     SELECT 'free' AS slug, 'Free' AS name, 'Core invoicing for small teams.' AS description,
-           0.00 AS price_amount, 'NGN' AS currency, 'lifetime' AS billing_interval, 0 AS sort_order, 1 AS is_active
-    UNION ALL SELECT 'starter', 'Starter', 'Growing businesses — higher limits.', 5000.00, 'NGN', 'monthly', 10, 1
-    UNION ALL SELECT 'pro', 'Pro', 'Scale with priority support and exports.', 15000.00, 'NGN', 'monthly', 20, 1
+           0.00 AS price_amount, 'NGN' AS currency, 'lifetime' AS billing_interval, 0 AS sort_order, 1 AS is_active,
+           0 AS nrs_a, 0 AS nrs_tax
+    UNION ALL SELECT 'starter', 'Starter', 'Growing businesses — higher limits.', 5000.00, 'NGN', 'monthly', 10, 1, 1, 1
+    UNION ALL SELECT 'pro', 'Pro', 'Scale with priority support and exports.', 15000.00, 'NGN', 'monthly', 20, 1, 1, 1
 ) AS v
 WHERE NOT EXISTS (SELECT 1 FROM subscription_plans LIMIT 1);
+
+CREATE TABLE IF NOT EXISTS subscription_plan_items (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    plan_id INT UNSIGNED NOT NULL,
+    sort_order SMALLINT NOT NULL DEFAULT 0,
+    label VARCHAR(200) NOT NULL,
+    detail TEXT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY subscription_plan_items_plan_sort (plan_id, sort_order),
+    CONSTRAINT fk_plan_items_plan FOREIGN KEY (plan_id)
+        REFERENCES subscription_plans (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS organization_subscriptions (
     organization_id INT UNSIGNED NOT NULL PRIMARY KEY,

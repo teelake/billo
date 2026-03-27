@@ -80,17 +80,13 @@ if ($whtRatesJson === false) {
     $whtRatesJson = '{}';
 }
 
-$orgVatStored = (float) ($orgTax['vat_rate'] ?? 0);
-$defaultVatDisplay = $orgVatStored > 0.00001 ? $orgVatStored : $platformVat;
 $applyVatChecked = $is_edit
     ? (!empty($invRow['apply_vat']))
     : (!empty($orgTax['enable_vat']));
 $applyWhtChecked = $is_edit
     ? (!empty($invRow['apply_wht']))
     : (!empty($orgTax['enable_wht']));
-$vatRateField = $is_edit
-    ? (string) (float) ($invRow['vat_rate'] ?? $defaultVatDisplay)
-    : (string) $defaultVatDisplay;
+$vatRateForPreview = $platformVat;
 $whtSelected = $is_edit ? (int) ($invRow['wht_id'] ?? 0) : (int) ($orgTax['default_wht_id'] ?? 0);
 
 $title = ($is_credit_note ? 'Edit credit note' : ($is_edit ? 'Edit invoice' : 'New invoice')) . ' — billo';
@@ -170,7 +166,7 @@ ob_start();
                 <?php if ($docTaxSupported): ?>
                     <div class="welcome-card invoice-tax-inline" style="padding:1rem 1.25rem;margin:0 0 1.25rem">
                         <h2 class="invoice-lines-title" style="margin-top:0">VAT &amp; withholding</h2>
-                        <p class="hint" style="margin:0 0 1rem">Applied to the line subtotal below. Defaults from <a href="<?= billo_e(billo_url('/organization#invoicing')) ?>">business tax settings</a>.</p>
+                        <p class="hint" style="margin:0 0 1rem">Applied to the line subtotal below. VAT rate is the <strong>platform</strong> percentage from <strong>System → Tax templates</strong>; toggles default from <a href="<?= billo_e(billo_url('/organization#invoicing')) ?>">business settings</a>.</p>
                         <div class="field-toggle" style="margin-bottom:0.75rem">
                             <div class="field-toggle__text">
                                 <strong class="field-toggle__label">Apply VAT</strong>
@@ -181,8 +177,9 @@ ob_start();
                             </label>
                         </div>
                         <div class="field" id="inv-vat-rate-wrap">
-                            <label class="label" for="inv-vat-rate">VAT rate (%)</label>
-                            <input class="input" type="text" inputmode="decimal" name="vat_rate" id="inv-vat-rate" value="<?= billo_e(rtrim(rtrim(sprintf('%.4f', (float) $vatRateField), '0'), '.') ?: '0') ?>" style="max-width:8rem">
+                            <p class="label" style="margin:0 0 0.35rem">VAT rate</p>
+                            <p class="hint" style="margin:0"><strong><?= billo_e(rtrim(rtrim(sprintf('%.4f', $vatRateForPreview), '0'), '.') ?: '0') ?>%</strong> — set by platform operator (additive tax template).</p>
+                            <input type="hidden" id="inv-vat-rate" value="<?= billo_e(rtrim(rtrim(sprintf('%.6f', $vatRateForPreview), '0'), '.') ?: '0') ?>" autocomplete="off" aria-hidden="true">
                         </div>
                         <div class="field-toggle" style="margin:1rem 0 0.75rem">
                             <div class="field-toggle__text">

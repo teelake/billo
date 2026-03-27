@@ -4,7 +4,7 @@ declare(strict_types=1);
 use App\Core\Csrf;
 use App\Core\Session;
 
-/** @var string $active dashboard|team|billing|clients|invoices|organization|system|system-analytics|system-reports|system-operators|system-configuration|system-plans|system-taxes|platform|analytics */
+/** @var string $active dashboard|team|billing|clients|invoices|organization|system|system-analytics|system-reports|system-operators|system-configuration|system-integrations|system-plans|system-taxes|platform|analytics */
 /** @var bool $show_team_nav */
 /** @var string $user_name */
 /** @var string $role */
@@ -123,6 +123,12 @@ if (function_exists('mb_strlen') && mb_strlen($initials, 'UTF-8') > 2) {
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
                 </span>
                 Configuration
+            </a>
+            <a class="app-sidebar__link<?= $active === 'system-integrations' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/system/integrations')) ?>">
+                <span class="app-sidebar__icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                </span>
+                NRS integration
             </a>
             <a class="app-sidebar__link<?= $active === 'system-plans' ? ' is-active' : '' ?>" href="<?= billo_e(billo_url('/system/plans')) ?>">
                 <span class="app-sidebar__icon" aria-hidden="true">

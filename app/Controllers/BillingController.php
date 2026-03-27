@@ -10,6 +10,7 @@ use App\Core\Request;
 use App\Core\Session;
 use App\Core\View;
 use App\Repositories\OrganizationSubscriptionRepository;
+use App\Repositories\PlanItemRepository;
 use App\Repositories\PlanRepository;
 use App\Repositories\SubscriptionOrderRepository;
 use App\Services\Payments\PaymentGatewayFactory;
@@ -31,9 +32,21 @@ final class BillingController extends Controller
         $this->subscriptions->ensureFreePlan($ctx['organization_id']);
         $plans = $this->plans->listActiveForDisplay();
         $current = $this->subscriptions->findWithPlan($ctx['organization_id']);
+        $planIds = [];
+        foreach ($plans as $p) {
+            if (!is_array($p)) {
+                continue;
+            }
+            $pid = (int) ($p['id'] ?? 0);
+            if ($pid > 0) {
+                $planIds[] = $pid;
+            }
+        }
+        $planItemsByPlan = (new PlanItemRepository())->listGroupedForPlans($planIds);
 
         View::render('billing/index', [
             'plans' => $plans,
+            'plan_items_by_plan' => $planItemsByPlan,
             'current' => $current,
             'user_name' => (string) Session::get('user_name', ''),
             'role' => $ctx['role'],

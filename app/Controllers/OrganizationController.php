@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Config;
 use App\Core\Controller;
 use App\Core\Csrf;
 use App\Core\Request;
 use App\Core\Session;
 use App\Core\View;
+use App\Repositories\OrganizationSubscriptionRepository;
 use App\Repositories\OrganizationRepository;
 use App\Repositories\OrganizationTaxRepository;
 use App\Repositories\TaxConfigRepository;
@@ -23,6 +25,7 @@ final class OrganizationController extends Controller
     public function __construct(
         private Request $request,
         private OrganizationRepository $organizations = new OrganizationRepository(),
+        private OrganizationSubscriptionRepository $subscriptions = new OrganizationSubscriptionRepository(),
         private OrganizationTaxRepository $orgTax = new OrganizationTaxRepository(),
         private TaxConfigRepository $taxConfigs = new TaxConfigRepository(),
     ) {
@@ -37,8 +40,10 @@ final class OrganizationController extends Controller
             $this->redirect('/dashboard');
         }
 
-        $org['nrs_token_configured'] = !empty($org['nrs_bearer_token']);
-        unset($org['nrs_bearer_token']);
+        $sub = $this->subscriptions->findWithPlan($ctx['organization_id']) ?? [];
+        $nrsPlanAllowed = (int) ($sub['nrs_integration_allowed'] ?? 0) === 1;
+        $nrsPlanRequiresTaxId = (int) ($sub['nrs_requires_organization_tax_id'] ?? 0) === 1;
+        $platformNrsConfigured = trim((string) Config::get('nrs.api_base_url', '')) !== '';
 
         $this->orgTax->ensureDefaults($ctx['organization_id']);
         $orgTaxRow = $this->orgTax->findByOrganization($ctx['organization_id']) ?? [];
@@ -46,6 +51,9 @@ final class OrganizationController extends Controller
         View::render('organization/edit', [
             'organization' => $org,
             'organization_tax' => $orgTaxRow,
+            'nrs_plan_allowed' => $nrsPlanAllowed,
+            'nrs_plan_requires_tax_id' => $nrsPlanRequiresTaxId,
+            'platform_nrs_configured' => $platformNrsConfigured,
             'wht_types' => $this->taxConfigs->listActiveByType('deductive'),
             'platform_vat_rate' => $this->taxConfigs->defaultPlatformVatRatePercent(),
             'nigerian_banks' => NigerianBankListService::banks(),
@@ -128,7 +136,7 @@ final class OrganizationController extends Controller
         $nrsOk = $this->organizations->updateNrsSettings($orgId, $nrsPayload);
         $msg = 'Business details saved. They appear on printed invoices, PDFs, and emails.';
         if (!$nrsOk) {
-            $msg .= ' NRS integration could not be saved—apply migration 015 if you use NRS.';
+            $msg .= ' NRS preferences could not be saved—ensure database migrations through 016 are applied.';
         }
         Session::flash('success', $msg);
         $this->redirect('/organization');
@@ -343,56 +351,33 @@ final class OrganizationController extends Controller
     }
 
     /**
-     * @return array{
-     *   enable_vat: int,
-     *   vat_rate: float,
-     *   enable_wht: int,
-     *   default_wht_id: ?int
-     * }|string
-     */
-    /**
-     * @return array{
-     *   nrs_enabled: int,
-     *   nrs_api_base_url: ?string,
-     *   nrs_bearer_token: ?string,
-     *   nrs_tenant_external_id: ?string
-     * }|string
+     * @return array{nrs_enabled: int, nrs_tenant_external_id: ?string}|string
      */
     private function validatedNrsPayload(int $organizationId): array|string
     {
+        $sub = $this->subscriptions->findWithPlan($organizationId) ?? [];
+        $planAllows = (int) ($sub['nrs_integration_allowed'] ?? 0) === 1;
+        $planNeedsTax = (int) ($sub['nrs_requires_organization_tax_id'] ?? 0) === 1;
+        $platformReady = trim((string) Config::get('nrs.api_base_url', '')) !== '';
+
         $org = $this->organizations->findById($organizationId) ?? [];
         $enabled = isset($_POST['nrs_enabled']) && (string) $_POST['nrs_enabled'] === '1';
-        $urlRaw = trim((string) $this->request->input('nrs_api_base_url', ''));
-        $url = $urlRaw !== '' ? $urlRaw : null;
-        if ($url !== null && filter_var($url, FILTER_VALIDATE_URL) === false) {
-            return 'NRS API base URL must be a valid URL (e.g. https://api.example.com).';
-        }
-        if (strlen((string) $url) > 500) {
-            return 'NRS API base URL is too long.';
-        }
-
         $tid = $this->trimOrNull($this->request->input('nrs_tenant_external_id', ''), 120);
-        $newTok = trim((string) $this->request->input('nrs_bearer_token', ''));
-        $clearTok = isset($_POST['nrs_clear_token']) && (string) $_POST['nrs_clear_token'] === '1';
 
-        $token = isset($org['nrs_bearer_token']) && is_string($org['nrs_bearer_token']) ? $org['nrs_bearer_token'] : null;
-        if ($clearTok) {
-            $token = null;
-        } elseif ($newTok !== '') {
-            if (strlen($newTok) > 2000) {
-                return 'Bearer token is too long (max 2000 characters).';
+        if ($enabled) {
+            if (!$platformReady) {
+                return 'NRS integration is not configured on the platform yet. A system operator must add the API URL under System → Integrations.';
             }
-            $token = $newTok;
-        }
-
-        if ($enabled && ($url === null || $url === '')) {
-            return 'Enter the NRS API base URL when sync is enabled, or turn off NRS sync.';
+            if (!$planAllows) {
+                return 'Your current plan does not include NRS integration. Upgrade or ask support if you need it.';
+            }
+            if ($planNeedsTax && trim((string) ($org['tax_id'] ?? '')) === '') {
+                return 'Enter your organization tax / TIN on the Business details tab—this plan requires it for NRS.';
+            }
         }
 
         return [
             'nrs_enabled' => $enabled ? 1 : 0,
-            'nrs_api_base_url' => $url,
-            'nrs_bearer_token' => $token,
             'nrs_tenant_external_id' => $tid,
         ];
     }
@@ -401,15 +386,6 @@ final class OrganizationController extends Controller
     {
         $enableVat = isset($_POST['org_enable_vat']) && (string) $_POST['org_enable_vat'] === '1';
         $enableWht = isset($_POST['org_enable_wht']) && (string) $_POST['org_enable_wht'] === '1';
-
-        $vr = trim((string) $this->request->input('org_vat_rate', ''));
-        $vatRate = 0.0;
-        if ($vr !== '' && is_numeric($vr)) {
-            $vatRate = (float) $vr;
-        }
-        if ($vatRate < 0 || $vatRate > 100) {
-            return 'Default VAT rate must be between 0 and 100 (use 0 to use the platform default on new invoices).';
-        }
 
         $whtId = null;
         $whtRaw = $this->request->input('org_default_wht_id', '');
@@ -422,7 +398,7 @@ final class OrganizationController extends Controller
 
         return [
             'enable_vat' => $enableVat ? 1 : 0,
-            'vat_rate' => $vatRate,
+            'vat_rate' => 0.0,
             'enable_wht' => $enableWht ? 1 : 0,
             'default_wht_id' => $whtId,
         ];

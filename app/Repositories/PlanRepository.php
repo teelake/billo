@@ -73,11 +73,22 @@ final class PlanRepository
         return $row ?: null;
     }
 
-    public function create(string $slug, string $name, ?string $description, float $price, string $currency, string $interval, int $sort, bool $active): int
-    {
+    public function create(
+        string $slug,
+        string $name,
+        ?string $description,
+        float $price,
+        string $currency,
+        string $interval,
+        int $sort,
+        bool $active,
+        bool $nrsIntegrationAllowed = false,
+        bool $nrsRequiresOrganizationTaxId = false,
+    ): int {
         $st = Database::pdo()->prepare(
-            'INSERT INTO subscription_plans (slug, name, description, price_amount, currency, billing_interval, sort_order, is_active)
-             VALUES (:slug, :name, :desc, :price, :cur, :intv, :sort, :act)'
+            'INSERT INTO subscription_plans (slug, name, description, price_amount, currency, billing_interval, sort_order, is_active,
+                nrs_integration_allowed, nrs_requires_organization_tax_id)
+             VALUES (:slug, :name, :desc, :price, :cur, :intv, :sort, :act, :nrs_ok, :nrs_tax)'
         );
         $st->execute([
             'slug' => $slug,
@@ -88,16 +99,30 @@ final class PlanRepository
             'intv' => in_array($interval, ['monthly', 'yearly', 'lifetime'], true) ? $interval : 'monthly',
             'sort' => $sort,
             'act' => $active ? 1 : 0,
+            'nrs_ok' => $nrsIntegrationAllowed ? 1 : 0,
+            'nrs_tax' => $nrsRequiresOrganizationTaxId ? 1 : 0,
         ]);
 
         return (int) Database::pdo()->lastInsertId();
     }
 
-    public function update(int $id, string $slug, string $name, ?string $description, float $price, string $currency, string $interval, int $sort, bool $active): bool
-    {
+    public function update(
+        int $id,
+        string $slug,
+        string $name,
+        ?string $description,
+        float $price,
+        string $currency,
+        string $interval,
+        int $sort,
+        bool $active,
+        bool $nrsIntegrationAllowed = false,
+        bool $nrsRequiresOrganizationTaxId = false,
+    ): bool {
         $st = Database::pdo()->prepare(
             'UPDATE subscription_plans SET slug = :slug, name = :name, description = :desc,
-             price_amount = :price, currency = :cur, billing_interval = :intv, sort_order = :sort, is_active = :act
+             price_amount = :price, currency = :cur, billing_interval = :intv, sort_order = :sort, is_active = :act,
+             nrs_integration_allowed = :nrs_ok, nrs_requires_organization_tax_id = :nrs_tax
              WHERE id = :id'
         );
         $st->execute([
@@ -110,6 +135,8 @@ final class PlanRepository
             'intv' => in_array($interval, ['monthly', 'yearly', 'lifetime'], true) ? $interval : 'monthly',
             'sort' => $sort,
             'act' => $active ? 1 : 0,
+            'nrs_ok' => $nrsIntegrationAllowed ? 1 : 0,
+            'nrs_tax' => $nrsRequiresOrganizationTaxId ? 1 : 0,
         ]);
 
         return $st->rowCount() > 0;

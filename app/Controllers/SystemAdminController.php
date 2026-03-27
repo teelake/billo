@@ -10,6 +10,7 @@ use App\Core\Request;
 use App\Core\Session;
 use App\Core\View;
 use App\Repositories\OrganizationRepository;
+use App\Repositories\PlanItemRepository;
 use App\Repositories\PlanRepository;
 use App\Repositories\TaxConfigRepository;
 use App\Repositories\PlatformAdminGrantRepository;
@@ -296,6 +297,35 @@ final class SystemAdminController extends \App\Core\Controller
         ]);
     }
 
+    public function integrations(): void
+    {
+        $this->requireSystemAdmin();
+
+        if (strtoupper($this->request->method) === 'POST') {
+            if (!Csrf::validate($this->request->input('_csrf'))) {
+                Session::flash('error', 'Invalid session. Try again.');
+                $this->redirect('/system/integrations');
+            }
+            $errors = $this->platformConfig->saveNrsIntegration($this->request);
+            if ($errors !== []) {
+                Session::flash('error', implode(' ', $errors));
+                $this->redirect('/system/integrations');
+            }
+            PlatformSettings::applyFromDatabase();
+            Session::flash('success', 'NRS integration settings saved.');
+            $this->redirect('/system/integrations');
+        }
+
+        View::render('system/integrations', [
+            'db_setting_keys' => (new PlatformSettingsRepository())->allKeys(),
+            'user_name' => (string) Session::get('user_name', ''),
+            'role' => (string) Session::get('role', 'owner'),
+            'show_team_nav' => in_array(Session::get('role', ''), ['owner', 'admin'], true),
+            'error' => Session::flash('error') ?? '',
+            'success' => Session::flash('success') ?? '',
+        ]);
+    }
+
     public function operators(): void
     {
         $this->requireSystemAdmin();
@@ -405,9 +435,21 @@ final class SystemAdminController extends \App\Core\Controller
                 $tableMissing = true;
             }
         }
+        $planIds = [];
+        foreach ($rows as $r) {
+            if (!is_array($r)) {
+                continue;
+            }
+            $pid = (int) ($r['id'] ?? 0);
+            if ($pid > 0) {
+                $planIds[] = $pid;
+            }
+        }
+        $planItemsByPlan = (new PlanItemRepository())->listGroupedForPlans($planIds);
 
         View::render('system/plans', [
             'plan_rows' => $rows,
+            'plan_items_by_plan' => $planItemsByPlan,
             'table_missing' => $tableMissing,
             'user_name' => (string) Session::get('user_name', ''),
             'role' => (string) Session::get('role', 'owner'),
@@ -471,8 +513,26 @@ final class SystemAdminController extends \App\Core\Controller
                 $sortRaw = trim((string) ($row['sort_order'] ?? '0'));
                 $sort = is_numeric($sortRaw) ? (int) $sortRaw : 0;
                 $active = !empty($row['is_active']) && (string) $row['is_active'] === '1';
+                $nrsOk = !empty($row['nrs_integration_allowed']) && (string) $row['nrs_integration_allowed'] === '1';
+                $nrsTax = !empty($row['nrs_requires_organization_tax_id'])
+                    && (string) $row['nrs_requires_organization_tax_id'] === '1';
+                if (!$nrsOk) {
+                    $nrsTax = false;
+                }
                 try {
-                    $this->plans->update($id, $slug, $name, $description, $price, $currency, $intv, $sort, $active);
+                    $this->plans->update(
+                        $id,
+                        $slug,
+                        $name,
+                        $description,
+                        $price,
+                        $currency,
+                        $intv,
+                        $sort,
+                        $active,
+                        $nrsOk,
+                        $nrsTax
+                    );
                 } catch (PDOException) {
                     Session::flash('error', 'Could not save plans. Check the database and migrations.');
                     $this->redirect('/system/plans');
@@ -503,8 +563,26 @@ final class SystemAdminController extends \App\Core\Controller
                 $sortRaw = trim((string) ($create['sort_order'] ?? '0'));
                 $sort = is_numeric($sortRaw) ? (int) $sortRaw : 0;
                 $active = isset($create['is_active']) && (string) $create['is_active'] === '1';
+                $nrsOk = !empty($create['nrs_integration_allowed'])
+                    && (string) $create['nrs_integration_allowed'] === '1';
+                $nrsTax = !empty($create['nrs_requires_organization_tax_id'])
+                    && (string) $create['nrs_requires_organization_tax_id'] === '1';
+                if (!$nrsOk) {
+                    $nrsTax = false;
+                }
                 try {
-                    $this->plans->create($slug, $name, $description, $price, $currency, $intv, $sort, $active);
+                    $this->plans->create(
+                        $slug,
+                        $name,
+                        $description,
+                        $price,
+                        $currency,
+                        $intv,
+                        $sort,
+                        $active,
+                        $nrsOk,
+                        $nrsTax
+                    );
                 } catch (PDOException) {
                     Session::flash('error', 'Could not create plan (duplicate slug or DB error).');
                     $this->redirect('/system/plans');
@@ -513,6 +591,88 @@ final class SystemAdminController extends \App\Core\Controller
         }
 
         Session::flash('success', 'Subscription plans saved.');
+        $this->redirect('/system/plans');
+    }
+
+    public function planItemsSave(): void
+    {
+        $this->requireSystemAdmin();
+        if (!Csrf::validate($this->request->input('_csrf'))) {
+            Session::flash('error', 'Invalid session. Try again.');
+            $this->redirect('/system/plans');
+        }
+
+        $repo = new PlanItemRepository();
+
+        $updates = $_POST['plan_item_update'] ?? null;
+        if (is_array($updates)) {
+            foreach ($updates as $idRaw => $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $id = (int) $idRaw;
+                if ($id <= 0) {
+                    continue;
+                }
+                if ($repo->findById($id) === null) {
+                    continue;
+                }
+                $label = trim((string) ($row['label'] ?? ''));
+                $detailRaw = trim((string) ($row['detail'] ?? ''));
+                $detail = $detailRaw === '' ? null : $detailRaw;
+                $sortRaw = trim((string) ($row['sort_order'] ?? '0'));
+                $sort = is_numeric($sortRaw) ? (int) $sortRaw : 0;
+                if ($label === '') {
+                    Session::flash('error', 'Each plan item needs a non-empty label.');
+                    $this->redirect('/system/plans');
+                }
+                try {
+                    $repo->update($id, $label, $detail, $sort);
+                } catch (PDOException) {
+                    Session::flash('error', 'Could not update plan items. Run migrations through 016 if this is a new install.');
+                    $this->redirect('/system/plans');
+                }
+            }
+        }
+
+        $del = $_POST['plan_item_delete'] ?? null;
+        if (is_array($del)) {
+            foreach ($del as $idRaw) {
+                $id = (int) $idRaw;
+                if ($id > 0) {
+                    $repo->delete($id);
+                }
+            }
+        }
+
+        $creates = $_POST['plan_item_create'] ?? null;
+        if (is_array($creates)) {
+            foreach ($creates as $pidRaw => $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $pid = (int) $pidRaw;
+                if ($pid <= 0 || $this->plans->findById($pid) === null) {
+                    continue;
+                }
+                $label = trim((string) ($row['label'] ?? ''));
+                if ($label === '') {
+                    continue;
+                }
+                $detailRaw = trim((string) ($row['detail'] ?? ''));
+                $detail = $detailRaw === '' ? null : $detailRaw;
+                $sortRaw = trim((string) ($row['sort_order'] ?? '0'));
+                $sort = is_numeric($sortRaw) ? (int) $sortRaw : 0;
+                try {
+                    $repo->create($pid, $label, $detail, $sort);
+                } catch (PDOException) {
+                    Session::flash('error', 'Could not create plan item. Run migrations through 016 if this is a new install.');
+                    $this->redirect('/system/plans');
+                }
+            }
+        }
+
+        Session::flash('success', 'Plan marketing items saved.');
         $this->redirect('/system/plans');
     }
 

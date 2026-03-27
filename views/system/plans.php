@@ -4,6 +4,7 @@ declare(strict_types=1);
 use App\Core\Csrf;
 
 /** @var list<array<string, mixed>> $plan_rows */
+/** @var array<int, list<array<string, mixed>>> $plan_items_by_plan */
 /** @var bool $table_missing */
 /** @var string $user_name */
 /** @var string $role */
@@ -12,6 +13,7 @@ use App\Core\Csrf;
 $error = $error ?? '';
 $success = $success ?? '';
 $rows = isset($plan_rows) && is_array($plan_rows) ? $plan_rows : [];
+$itemsByPlan = isset($plan_items_by_plan) && is_array($plan_items_by_plan) ? $plan_items_by_plan : [];
 $tableMissing = !empty($table_missing);
 $title = 'Subscription plans — billo';
 ob_start();
@@ -19,6 +21,7 @@ ob_start();
 <section class="app-dashboard">
     <?php
     $active = 'system-plans';
+    $user_email = (string) \App\Core\Session::get('user_email', '');
     include dirname(__DIR__) . '/partials/app_topbar.php';
     ?>
     <div class="container app-dashboard__body">
@@ -29,18 +32,41 @@ ob_start();
             <div class="alert alert--success" role="alert" style="margin-bottom:1rem"><?= billo_e($success) ?></div>
         <?php endif; ?>
 
+        <div class="welcome-card" style="margin-bottom:1.25rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(16rem,1fr));gap:1.25rem">
+            <div>
+                <p class="eyebrow" style="margin:0 0 0.5rem">Operator checklist — non‑taxable / informal plan</p>
+                <ul class="hint" style="margin:0;padding-left:1.15rem">
+                    <li style="margin:0.25rem 0"><strong>Plans</strong>: leave <strong>NRS</strong> off for this plan; optional plan items (“Core invoicing”, no filing sync).</li>
+                    <li style="margin:0.25rem 0"><strong>Tax templates</strong>: VAT % still lives here if other plans need it; tenants can turn off <strong>Tax on invoices</strong> and VAT defaults in Business settings.</li>
+                    <li style="margin:0.25rem 0"><strong>Integrations</strong>: platform NRS URL is optional; tenants on this plan will not get an NRS toggle.</li>
+                </ul>
+            </div>
+            <div>
+                <p class="eyebrow" style="margin:0 0 0.5rem">Operator checklist — taxable NRS plan</p>
+                <ul class="hint" style="margin:0;padding-left:1.15rem">
+                    <li style="margin:0.25rem 0"><strong>Tax templates</strong>: set the <strong>additive</strong> VAT row to the legal % (this is the only VAT figure tenants cannot override).</li>
+                    <li style="margin:0.25rem 0"><strong>NRS integration</strong>: configure base URL, path, and token under <a href="<?= billo_e(billo_url('/system/integrations')) ?>">NRS integration</a>.</li>
+                    <li style="margin:0.25rem 0"><strong>This plan</strong>: enable <strong>NRS → Allow</strong>; turn on <strong>TIN</strong> if orgs must have a tax ID before NRS stays on.</li>
+                    <li style="margin:0.25rem 0"><strong>Plan items</strong>: bullets that mention NRS / compliance help tenants choose the right tier.</li>
+                </ul>
+            </div>
+        </div>
+
         <div class="page-head">
             <div>
                 <p class="eyebrow eyebrow--dark">platform operator</p>
                 <h1 class="page-head__title">Subscription plans</h1>
-                <p class="page-head__lead">What tenants see on <strong>Plans &amp; billing</strong>. Prices and labels are stored in the database.</p>
+                <p class="page-head__lead">What tenants see on <strong>Plans &amp; billing</strong>. Enable <strong>NRS</strong> per plan, edit marketing bullets, and configure the shared API under <a href="<?= billo_e(billo_url('/system/integrations')) ?>">Integrations</a>.</p>
             </div>
-            <a class="btn btn--secondary" href="<?= billo_e(billo_url('/system')) ?>">System</a>
+            <div class="page-head__actions">
+                <a class="btn btn--secondary" href="<?= billo_e(billo_url('/system/integrations')) ?>">NRS</a>
+                <a class="btn btn--secondary" href="<?= billo_e(billo_url('/system')) ?>">System</a>
+            </div>
         </div>
 
         <?php if ($tableMissing): ?>
             <div class="welcome-card">
-                <p>The <code>subscription_plans</code> table is missing. Run migration <code>015_plans_nrs_subscriptions.sql</code>, then reload.</p>
+                <p>The <code>subscription_plans</code> table is missing. Run migrations <code>015_plans_nrs_subscriptions.sql</code> and <code>016_plan_items_platform_nrs.sql</code>, then reload.</p>
             </div>
         <?php else: ?>
             <form class="config-form" method="post" action="<?= billo_e(billo_url('/system/plans')) ?>">
@@ -59,6 +85,8 @@ ob_start();
                                 <th>Interval</th>
                                 <th class="num">Sort</th>
                                 <th>Active</th>
+                                <th>NRS</th>
+                                <th>TIN</th>
                             </tr>
                             </thead>
                             <tbody>
@@ -79,6 +107,8 @@ ob_start();
                                 $intv = (string) ($r['billing_interval'] ?? 'monthly');
                                 $sort = (int) ($r['sort_order'] ?? 0);
                                 $on = !empty($r['is_active']);
+                                $nrsOk = !empty($r['nrs_integration_allowed']);
+                                $nrsTax = !empty($r['nrs_requires_organization_tax_id']);
                                 ?>
                                 <tr>
                                     <td class="num"><?= $pid ?></td>
@@ -114,9 +144,17 @@ ob_start();
                                         <input type="hidden" name="plan_update[<?= $pid ?>][is_active]" value="0">
                                         <label><input type="checkbox" name="plan_update[<?= $pid ?>][is_active]" value="1"<?= $on ? ' checked' : '' ?>> On</label>
                                     </td>
+                                    <td>
+                                        <input type="hidden" name="plan_update[<?= $pid ?>][nrs_integration_allowed]" value="0">
+                                        <label><input type="checkbox" name="plan_update[<?= $pid ?>][nrs_integration_allowed]" value="1"<?= $nrsOk ? ' checked' : '' ?>> Allow</label>
+                                    </td>
+                                    <td>
+                                        <input type="hidden" name="plan_update[<?= $pid ?>][nrs_requires_organization_tax_id]" value="0">
+                                        <label><input type="checkbox" name="plan_update[<?= $pid ?>][nrs_requires_organization_tax_id]" value="1"<?= $nrsTax ? ' checked' : '' ?>> Req.</label>
+                                    </td>
                                 </tr>
                                 <tr>
-                                    <td colspan="7" style="padding-top:0;border-top:none">
+                                    <td colspan="9" style="padding-top:0;border-top:none">
                                         <label class="sr-only" for="plan-desc-<?= $pid ?>">Description</label>
                                         <input class="input input--sm" id="plan-desc-<?= $pid ?>" name="plan_update[<?= $pid ?>][description]" maxlength="2000" value="<?= billo_e($desc) ?>" placeholder="Short description for billing page">
                                     </td>
@@ -125,6 +163,7 @@ ob_start();
                             </tbody>
                         </table>
                     </div>
+                    <p class="hint" style="margin:0.75rem 0 0"><strong>TIN</strong>: when checked, workspaces on this plan must save a tax ID before NRS sync can stay on.</p>
                     <button type="submit" class="btn btn--primary" style="margin-top:1rem">Save plan changes</button>
                 </fieldset>
 
@@ -167,10 +206,112 @@ ob_start();
                             <span class="config-form__label">Active</span>
                             <label><input type="checkbox" name="plan_create[is_active]" value="1" checked> Listed for tenants</label>
                         </label>
+                        <label class="config-form__field">
+                            <span class="config-form__label">NRS integration</span>
+                            <input type="hidden" name="plan_create[nrs_integration_allowed]" value="0">
+                            <label><input type="checkbox" name="plan_create[nrs_integration_allowed]" value="1"> Allow for this plan</label>
+                        </label>
+                        <label class="config-form__field">
+                            <span class="config-form__label">Require tax ID</span>
+                            <input type="hidden" name="plan_create[nrs_requires_organization_tax_id]" value="0">
+                            <label><input type="checkbox" name="plan_create[nrs_requires_organization_tax_id]" value="1"> Require org TIN for NRS</label>
+                        </label>
                     </div>
                     <button type="submit" class="btn btn--secondary">Create plan</button>
                 </fieldset>
             </form>
+
+            <?php if ($rows !== []): ?>
+            <form class="config-form" method="post" action="<?= billo_e(billo_url('/system/plan-items')) ?>" style="margin-top:1.5rem">
+                <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
+
+                <fieldset class="config-form__section welcome-card">
+                    <legend class="config-form__legend">Plan marketing bullets</legend>
+                    <p class="hint" style="margin:0 0 1rem">These lines appear as extras on <strong>Plans &amp; billing</strong>. Leave “Add bullet” fields empty to skip creating new rows.</p>
+
+                    <?php foreach ($rows as $pr): ?>
+                        <?php
+                        if (!is_array($pr)) {
+                            continue;
+                        }
+                        $ppid = (int) ($pr['id'] ?? 0);
+                        if ($ppid <= 0) {
+                            continue;
+                        }
+                        $pn = (string) ($pr['name'] ?? 'Plan');
+                        $ps = (string) ($pr['slug'] ?? '');
+                        $pItems = $itemsByPlan[$ppid] ?? [];
+                        ?>
+                        <div class="welcome-card" style="margin:1rem 0;padding:1rem">
+                            <p class="eyebrow" style="margin:0 0 0.5rem"><?= billo_e($pn) ?> <span class="hint">(<?= billo_e($ps) ?>)</span></p>
+                            <?php if ($pItems !== []): ?>
+                                <div class="table-wrap" style="overflow-x:auto;margin-bottom:0.75rem">
+                                    <table class="data-table data-table--comfortable">
+                                        <thead>
+                                        <tr>
+                                            <th class="num">ID</th>
+                                            <th>Label</th>
+                                            <th>Detail</th>
+                                            <th class="num">Sort</th>
+                                            <th>Del</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <?php foreach ($pItems as $it): ?>
+                                            <?php
+                                            if (!is_array($it)) {
+                                                continue;
+                                            }
+                                            $iid = (int) ($it['id'] ?? 0);
+                                            if ($iid <= 0) {
+                                                continue;
+                                            }
+                                            $ilab = (string) ($it['label'] ?? '');
+                                            $idet = (string) ($it['detail'] ?? '');
+                                            $isort = (int) ($it['sort_order'] ?? 0);
+                                            ?>
+                                            <tr>
+                                                <td class="num"><?= $iid ?></td>
+                                                <td>
+                                                    <input class="input input--sm" name="plan_item_update[<?= $iid ?>][label]" value="<?= billo_e($ilab) ?>" maxlength="200" required>
+                                                </td>
+                                                <td>
+                                                    <input class="input input--sm" name="plan_item_update[<?= $iid ?>][detail]" value="<?= billo_e($idet) ?>" maxlength="2000">
+                                                </td>
+                                                <td class="num">
+                                                    <input class="input input--sm" name="plan_item_update[<?= $iid ?>][sort_order]" inputmode="numeric" value="<?= $isort ?>">
+                                                </td>
+                                                <td>
+                                                    <label><input type="checkbox" name="plan_item_delete[]" value="<?= $iid ?>"> </label>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php endif; ?>
+                            <p style="margin:0 0 0.35rem;font-weight:600">Add bullet</p>
+                            <div class="field-grid" style="grid-template-columns:1fr 1fr 5rem;gap:0.5rem;align-items:end">
+                                <label class="field" style="margin:0">
+                                    <span class="label">Label</span>
+                                    <input class="input input--sm" name="plan_item_create[<?= $ppid ?>][label]" maxlength="200" placeholder="e.g. Unlimited invoices">
+                                </label>
+                                <label class="field" style="margin:0">
+                                    <span class="label">Detail (optional)</span>
+                                    <input class="input input--sm" name="plan_item_create[<?= $ppid ?>][detail]" maxlength="2000">
+                                </label>
+                                <label class="field" style="margin:0">
+                                    <span class="label">Sort</span>
+                                    <input class="input input--sm" name="plan_item_create[<?= $ppid ?>][sort_order]" inputmode="numeric" value="0">
+                                </label>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+
+                    <button type="submit" class="btn btn--primary" style="margin-top:1rem">Save plan items</button>
+                </fieldset>
+            </form>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
 </section>

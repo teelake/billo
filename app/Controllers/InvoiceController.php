@@ -785,20 +785,13 @@ final class InvoiceController extends Controller
     private function resolveDocumentTaxPayload(int $organizationId): array|string
     {
         $this->orgTax->ensureDefaults($organizationId);
-        $orgTax = $this->orgTax->findByOrganization($organizationId) ?? [];
 
         $applyVat = isset($_POST['apply_vat']) && (string) $_POST['apply_vat'] === '1';
         $applyWht = isset($_POST['apply_wht']) && (string) $_POST['apply_wht'] === '1';
 
         $vatRate = 0.0;
         if ($applyVat) {
-            $vrRaw = trim((string) $this->request->input('vat_rate', ''));
-            if ($vrRaw !== '' && is_numeric($vrRaw)) {
-                $vatRate = (float) $vrRaw;
-            } else {
-                $orgVat = (float) ($orgTax['vat_rate'] ?? 0);
-                $vatRate = $orgVat > 0.00001 ? $orgVat : $this->taxConfigs->defaultPlatformVatRatePercent();
-            }
+            $vatRate = $this->taxConfigs->defaultPlatformVatRatePercent();
             if ($vatRate < 0 || $vatRate > 100) {
                 return 'VAT rate must be between 0 and 100.';
             }

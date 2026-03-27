@@ -33,7 +33,7 @@ ob_start();
             <div>
                 <p class="eyebrow eyebrow--dark">system operator</p>
                 <h1 class="page-head__title">Tax templates</h1>
-                <p class="page-head__lead">Platform-wide VAT (additive) and WHT (deductive) definitions. Businesses choose defaults and can override per invoice.</p>
+                <p class="page-head__lead">Platform-wide tax definitions. The <strong>VAT percentage</strong> is the first <em>active additive</em> row below (typically “VAT (standard)”) and is the only place that rate is set—tenants cannot change the %, only whether VAT applies on each invoice.</p>
             </div>
             <a class="btn btn--secondary" href="<?= billo_e(billo_url('/system')) ?>">System</a>
         </div>
@@ -43,6 +43,10 @@ ob_start();
                 <p>The <code>tax_configs</code> table is missing. Run migration <code>014_invoice_document_tax_module.sql</code> (or apply the full schema), then reload this page.</p>
             </div>
         <?php else: ?>
+            <div class="welcome-card" style="margin-bottom:1.25rem">
+                <p class="eyebrow" style="margin:0 0 0.5rem">Platform VAT rate</p>
+                <p class="hint" style="margin:0">Keep exactly one primary <strong>additive</strong> template active for document VAT unless you intentionally use competing rates. The app uses the lowest sort order, then smallest ID.</p>
+            </div>
             <div class="welcome-card" data-billo-filter-table style="overflow-x:auto">
                 <div style="padding:0.75rem 1rem;border-bottom:1px solid var(--color-border, #e2e8f0)">
                     <label class="label" for="taxes-table-filter" style="font-size:0.85rem">Filter rows</label>

@@ -256,6 +256,20 @@ final class PlatformSettings
             $patch['landing'] = $landing;
         }
 
+        if (array_key_exists('nrs.api_base_url', $assoc)) {
+            $v = trim((string) ($assoc['nrs.api_base_url'] ?? ''));
+            if ($v !== '') {
+                $patch['nrs']['api_base_url'] = rtrim($v, '/');
+            }
+        }
+        if (array_key_exists('nrs.invoices_path', $assoc)) {
+            $raw = trim((string) ($assoc['nrs.invoices_path'] ?? ''));
+            $patch['nrs']['invoices_path'] = $raw === '' ? '/invoices' : $raw;
+        }
+        if (array_key_exists('nrs.bearer_token', $assoc)) {
+            $patch['nrs']['bearer_token'] = $assoc['nrs.bearer_token'] === null ? '' : (string) $assoc['nrs.bearer_token'];
+        }
+
         if ($patch !== []) {
             Config::extend($patch);
         }

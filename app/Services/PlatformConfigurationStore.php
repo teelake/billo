@@ -106,6 +106,45 @@ final class PlatformConfigurationStore
         return $errors;
     }
 
+    /**
+     * NRS API is configured once for the whole platform (not per tenant).
+     *
+     * @return list<string>
+     */
+    public function saveNrsIntegration(Request $request): array
+    {
+        $errors = [];
+        $field = self::inputKey('nrs.api_base_url');
+        $raw = $request->input($field);
+        if ($raw === null || trim((string) $raw) === '') {
+            $this->settings->upsert('nrs.api_base_url', null);
+        } else {
+            $val = rtrim(trim((string) $raw), '/');
+            if (strlen($val) > 500 || filter_var($val, FILTER_VALIDATE_URL) === false) {
+                $errors[] = 'NRS API base URL must be a valid http(s) URL.';
+            } else {
+                $this->settings->upsert('nrs.api_base_url', $val);
+            }
+        }
+
+        $pathField = self::inputKey('nrs.invoices_path');
+        $pathRaw = $request->input($pathField);
+        if ($pathRaw === null || trim((string) $pathRaw) === '') {
+            $this->settings->upsert('nrs.invoices_path', null);
+        } else {
+            $p = trim((string) $pathRaw);
+            if (strlen($p) > 190 || !preg_match('#^/[a-zA-Z0-9_./\\-]*$#', $p)) {
+                $errors[] = 'NRS invoices path must look like /invoices (leading slash, safe characters only).';
+            } else {
+                $this->settings->upsert('nrs.invoices_path', $p);
+            }
+        }
+
+        $this->saveSecret($request, 'nrs.bearer_token', $errors);
+
+        return $errors;
+    }
+
     private static function inputKey(string $dbKey): string
     {
         return 'cfg_' . str_replace('.', '_', $dbKey);

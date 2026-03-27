@@ -4,6 +4,7 @@ declare(strict_types=1);
 use App\Core\Csrf;
 
 /** @var list<array<string, mixed>> $plans */
+/** @var array<int, list<array<string, mixed>>> $plan_items_by_plan */
 /** @var array<string, mixed>|null $current */
 /** @var string $user_name */
 /** @var string $role */
@@ -54,7 +55,7 @@ ob_start();
             </div>
         <?php elseif ($plans === []): ?>
             <div class="welcome-card">
-                <p>Subscription plans are not available yet. Ask a platform operator to run migration <code>015_plans_nrs_subscriptions.sql</code>.</p>
+                <p>Subscription plans are not available yet. Ask a platform operator to run migrations <code>015_plans_nrs_subscriptions.sql</code> and <code>016_plan_items_platform_nrs.sql</code>.</p>
             </div>
         <?php endif; ?>
 
@@ -76,11 +77,29 @@ ob_start();
                     $curCode = (string) ($p['currency'] ?? 'NGN');
                     $intv = (string) ($p['billing_interval'] ?? 'monthly');
                     $isCurrent = $pid === $currentPlanId && $currentPlanId > 0;
+                    $bullets = $itemsByPlan[$pid] ?? [];
                     ?>
                     <div class="welcome-card" style="margin:0;display:flex;flex-direction:column;gap:0.75rem">
                         <h2 class="invoice-lines-title" style="margin:0"><?= billo_e($name) ?></h2>
                         <?php if ($desc !== ''): ?>
                             <p class="hint" style="margin:0"><?= billo_e($desc) ?></p>
+                        <?php endif; ?>
+                        <?php if ($bullets !== []): ?>
+                            <ul class="hint" style="margin:0;padding-left:1.15rem">
+                                <?php foreach ($bullets as $bi): ?>
+                                    <?php
+                                    if (!is_array($bi)) {
+                                        continue;
+                                    }
+                                    $bl = trim((string) ($bi['label'] ?? ''));
+                                    $bd = trim((string) ($bi['detail'] ?? ''));
+                                    if ($bl === '') {
+                                        continue;
+                                    }
+                                    ?>
+                                    <li style="margin:0.2rem 0"><?= billo_e($bl) ?><?= $bd !== '' ? ' — ' . billo_e($bd) : '' ?></li>
+                                <?php endforeach; ?>
+                            </ul>
                         <?php endif; ?>
                         <p style="margin:0;font-size:1.15rem;font-weight:600">
                             <?php if ($price < 0.01): ?>

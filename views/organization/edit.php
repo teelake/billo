@@ -41,7 +41,6 @@ $whtTypesOrg = isset($wht_types) && is_array($wht_types) ? $wht_types : [];
 $platVatOrg = isset($platform_vat_rate) ? (float) $platform_vat_rate : 7.5;
 $orgVatOn = !empty($orgTaxSettings['enable_vat']);
 $orgWhtOn = !empty($orgTaxSettings['enable_wht']);
-$orgVatRateVal = (float) ($orgTaxSettings['vat_rate'] ?? 0);
 $orgWhtDef = (int) ($orgTaxSettings['default_wht_id'] ?? 0);
 $banksJson = json_encode($nigerian_banks, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
 if ($banksJson === false) {
@@ -201,20 +200,16 @@ ob_start();
 
                     <div class="field" style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--color-border, #e2e8f0)">
                         <p class="eyebrow" style="margin:0 0 0.5rem">Document tax (VAT / WHT)</p>
-                        <p class="hint" style="margin:0 0 1rem">Used for <strong>new standard invoices</strong> (subtotal VAT + subtotal WHT). Platform tax templates are managed under <strong>System → Tax templates</strong> (operators). Platform VAT default is currently <strong><?= billo_e(rtrim(rtrim(sprintf('%.2f', $platVatOrg), '0'), '.')) ?>%</strong>.</p>
+                        <p class="hint" style="margin:0 0 1rem">Used for <strong>new standard invoices</strong> (subtotal VAT + subtotal WHT). The <strong>VAT percentage</strong> is set only by platform operators under <strong>System → Tax templates</strong> (first active <em>additive</em> row, usually “VAT (standard)”). It is currently <strong><?= billo_e(rtrim(rtrim(sprintf('%.2f', $platVatOrg), '0'), '.')) ?>%</strong> for this workspace.</p>
                         <div class="field-toggle" style="margin-bottom:0.75rem">
                             <div class="field-toggle__text">
                                 <strong class="field-toggle__label">Enable VAT by default</strong>
-                                <p class="hint" style="margin:0.35rem 0 0">New invoices pre-check “Apply VAT”. You can still change per invoice.</p>
+                                <p class="hint" style="margin:0.35rem 0 0">New invoices pre-check “Apply VAT” using the platform VAT rate. You can still turn VAT off per invoice.</p>
                             </div>
                             <label class="field-toggle__control">
                                 <input type="checkbox" name="org_enable_vat" value="1" class="field-toggle__input" <?= $orgVatOn ? ' checked' : '' ?>>
                                 <span class="field-toggle__track" aria-hidden="true"><span class="field-toggle__thumb"></span></span>
                             </label>
-                        </div>
-                        <div class="field">
-                            <label class="label" for="org_vat_rate">Default VAT rate (%)</label>
-                            <input class="input" id="org_vat_rate" name="org_vat_rate" inputmode="decimal" style="max-width:8rem" value="<?= billo_e($orgVatRateVal > 0.00001 ? rtrim(rtrim(sprintf('%.4f', $orgVatRateVal), '0'), '.') : '') ?>" placeholder="0 = platform default">
                         </div>
                         <div class="field-toggle" style="margin:1rem 0 0.75rem">
                             <div class="field-toggle__text">
@@ -274,35 +269,42 @@ ob_start();
                         </div>
 
                         <div class="org-settings-panel" role="tabpanel" id="org-panel-integrations" aria-labelledby="org-tab-integrations" data-org-panel="integrations" hidden>
-                            <p class="org-settings-panel__lead">Connect Billo to external services. <strong>Nigeria Revenue Service (NRS)</strong> sync is optional: when enabled, each sent invoice is posted to your NRS base URL for their records (API contract configurable with your integration partner).</p>
                             <?php
+                            $nrsPlanAllowed = !empty($nrs_plan_allowed);
+                            $platformNrsOk = !empty($platform_nrs_configured);
+                            $nrsRequiresTin = !empty($nrs_plan_requires_tax_id);
+                            $nrsCanEnable = $nrsPlanAllowed && $platformNrsOk;
                             $nrsOn = (int) ($val('nrs_enabled') ?: '0') === 1;
-                            $nrsTokSet = !empty($o['nrs_token_configured']);
                             ?>
+                            <p class="org-settings-panel__lead"><strong>Nigeria Revenue Service (NRS)</strong> invoice sync uses API credentials configured by your platform operator. You only turn sync on and supply your tenant reference in NRS if needed.</p>
+                            <?php if (!$nrsPlanAllowed): ?>
+                                <div class="alert alert--error" role="alert" style="margin-bottom:1rem">Your current plan does not include NRS integration. Upgrade under <a href="<?= billo_e(billo_url('/billing')) ?>">Plans &amp; billing</a> if your operator offers it on another tier.</div>
+                            <?php elseif (!$platformNrsOk): ?>
+                                <div class="alert alert--error" role="alert" style="margin-bottom:1rem">NRS is not switched on for this platform yet. Ask a system operator to complete <strong>System → NRS integration</strong>.</div>
+                            <?php endif; ?>
+                            <?php if ($nrsRequiresTin && $nrsCanEnable): ?>
+                                <p class="hint" style="margin-bottom:1rem">This plan expects a <strong>tax / TIN</strong> on the Business details tab before NRS sync can stay enabled.</p>
+                            <?php endif; ?>
+
+                            <input type="hidden" name="nrs_enabled" value="0">
                             <div class="field-toggle" style="margin-bottom:1rem">
                                 <div class="field-toggle__text">
                                     <strong class="field-toggle__label">Enable NRS invoice sync</strong>
-                                    <p class="hint" style="margin:0.35rem 0 0">After you send an invoice, Billo will POST a payload to <code>{base URL}/invoices</code> when configured.</p>
+                                    <p class="hint" style="margin:0.35rem 0 0"><?= $nrsCanEnable ? 'After you send an invoice, Billo posts JSON to the platform-configured NRS endpoint.' : 'Unavailable until your plan and platform setup allow NRS.' ?></p>
                                 </div>
                                 <label class="field-toggle__control">
-                                    <input type="checkbox" name="nrs_enabled" value="1" class="field-toggle__input" id="nrs_enabled"<?= $nrsOn ? ' checked' : '' ?>>
+                                    <?php if ($nrsCanEnable): ?>
+                                        <input type="checkbox" name="nrs_enabled" value="1" class="field-toggle__input" id="nrs_enabled"<?= $nrsOn ? ' checked' : '' ?>>
+                                    <?php else: ?>
+                                        <input type="checkbox" class="field-toggle__input" id="nrs_enabled" disabled<?= $nrsOn ? ' checked' : '' ?> aria-disabled="true">
+                                    <?php endif; ?>
                                     <span class="field-toggle__track" aria-hidden="true"><span class="field-toggle__thumb"></span></span>
                                 </label>
                             </div>
                             <div class="field">
-                                <label class="label" for="nrs_api_base_url">NRS API base URL</label>
-                                <input class="input" id="nrs_api_base_url" name="nrs_api_base_url" type="url" maxlength="500" value="<?= billo_e($val('nrs_api_base_url')) ?>" placeholder="https://portal.nrs.example/api/v1">
-                                <p class="hint">No trailing slash. Billo appends <code>/invoices</code> for outbound sync.</p>
-                            </div>
-                            <div class="field">
                                 <label class="label" for="nrs_tenant_external_id">Tenant / org ID in NRS (optional)</label>
                                 <input class="input" id="nrs_tenant_external_id" name="nrs_tenant_external_id" maxlength="120" value="<?= billo_e($val('nrs_tenant_external_id')) ?>" placeholder="Your ID in the NRS portal">
-                            </div>
-                            <div class="field">
-                                <label class="label" for="nrs_bearer_token">Bearer token (optional)</label>
-                                <input class="input" id="nrs_bearer_token" name="nrs_bearer_token" type="password" maxlength="2000" value="" autocomplete="off" placeholder="<?= $nrsTokSet ? 'Leave blank to keep the saved token' : 'Paste API token if required' ?>">
-                                <p class="hint"><?= $nrsTokSet ? 'A token is already stored. Enter a new value to replace it.' : 'Stored with your organization record when saved (protect database access).' ?></p>
-                                <label class="hint" style="display:block;margin-top:0.5rem"><input type="checkbox" name="nrs_clear_token" value="1"> Clear saved token</label>
+                                <p class="hint">Included in the payload as <code>nrs_tenant_external_id</code> when sync runs.</p>
                             </div>
                         </div>
                     </div>

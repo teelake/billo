@@ -176,12 +176,7 @@ final class OrganizationRepository
     }
 
     /**
-     * @param array{
-     *   nrs_enabled: int,
-     *   nrs_api_base_url: ?string,
-     *   nrs_bearer_token: ?string,
-     *   nrs_tenant_external_id: ?string
-     * } $data
+     * @param array{nrs_enabled: int, nrs_tenant_external_id: ?string} $data
      */
     public function updateNrsSettings(int $organizationId, array $data): bool
     {
@@ -189,8 +184,6 @@ final class OrganizationRepository
             $stmt = Database::pdo()->prepare(
                 'UPDATE organizations SET
                     nrs_enabled = :nrs_en,
-                    nrs_api_base_url = :nrs_url,
-                    nrs_bearer_token = :nrs_tok,
                     nrs_tenant_external_id = :nrs_tid,
                     updated_at = CURRENT_TIMESTAMP
                  WHERE id = :id'
@@ -198,8 +191,6 @@ final class OrganizationRepository
             $stmt->execute([
                 'id' => $organizationId,
                 'nrs_en' => !empty($data['nrs_enabled']) ? 1 : 0,
-                'nrs_url' => $data['nrs_api_base_url'],
-                'nrs_tok' => $data['nrs_bearer_token'],
                 'nrs_tid' => $data['nrs_tenant_external_id'],
             ]);
         } catch (\Throwable) {

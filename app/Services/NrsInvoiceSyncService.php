@@ -23,28 +23,55 @@ final class NrsInvoiceSyncService
             return;
         }
 
-        $orgStmt = Database::pdo()->prepare(
-            'SELECT nrs_enabled, nrs_api_base_url, nrs_bearer_token, nrs_tenant_external_id FROM organizations WHERE id = :id LIMIT 1'
-        );
-        $orgStmt->execute(['id' => $organizationId]);
-        $org = $orgStmt->fetch(PDO::FETCH_ASSOC);
-        if ($org === false || empty($org['nrs_enabled'])) {
+        try {
+            $orgStmt = Database::pdo()->prepare(
+                'SELECT o.nrs_enabled, o.nrs_tenant_external_id, o.tax_id,
+                        p.nrs_integration_allowed, p.nrs_requires_organization_tax_id
+                 FROM organizations o
+                 LEFT JOIN organization_subscriptions s ON s.organization_id = o.id
+                 LEFT JOIN subscription_plans p ON p.id = s.plan_id
+                 WHERE o.id = :id LIMIT 1'
+            );
+            $orgStmt->execute(['id' => $organizationId]);
+            $row = $orgStmt->fetch(PDO::FETCH_ASSOC);
+        } catch (\Throwable) {
             return;
         }
 
-        $base = trim((string) ($org['nrs_api_base_url'] ?? ''));
+        if ($row === false || empty($row['nrs_enabled'])) {
+            return;
+        }
+        if ((int) ($row['nrs_integration_allowed'] ?? 0) !== 1) {
+            $this->recordSync($invoiceId, $organizationId, 'failed', 'NRS is not enabled for this subscription plan.');
+
+            return;
+        }
+        if ((int) ($row['nrs_requires_organization_tax_id'] ?? 0) === 1
+            && trim((string) ($row['tax_id'] ?? '')) === '') {
+            $this->recordSync($invoiceId, $organizationId, 'failed', 'Organization tax / TIN is required for NRS on this plan.');
+
+            return;
+        }
+
+        $base = rtrim(trim((string) Config::get('nrs.api_base_url', '')), '/');
         if ($base === '') {
-            $this->recordSync($invoiceId, $organizationId, 'failed', 'NRS API base URL is not set.');
+            $this->recordSync($invoiceId, $organizationId, 'failed', 'NRS API is not configured on the platform.');
 
             return;
         }
+
+        $path = trim((string) Config::get('nrs.invoices_path', '/invoices'));
+        if ($path === '' || $path[0] !== '/') {
+            $path = '/invoices';
+        }
+        $token = trim((string) Config::get('nrs.bearer_token', ''));
 
         try {
             $payload = [
                 'invoice' => $inv,
-                'nrs_tenant_external_id' => $org['nrs_tenant_external_id'],
+                'nrs_tenant_external_id' => $row['nrs_tenant_external_id'],
             ];
-            $ok = $this->postJson($base, (string) ($org['nrs_bearer_token'] ?? ''), $payload);
+            $ok = $this->postJson($base, $path, $token, $payload);
         } catch (\Throwable $e) {
             error_log('NRS sync payload: ' . $e->getMessage());
             $ok = false;
@@ -55,9 +82,9 @@ final class NrsInvoiceSyncService
     /**
      * @param array<string, mixed> $payload
      */
-    private function postJson(string $baseUrl, string $bearerToken, array $payload): bool
+    private function postJson(string $baseUrl, string $path, string $bearerToken, array $payload): bool
     {
-        $url = rtrim($baseUrl, '/') . '/invoices';
+        $url = rtrim($baseUrl, '/') . $path;
         if (!filter_var($url, FILTER_VALIDATE_URL)) {
             return false;
         }
