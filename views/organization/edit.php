@@ -76,7 +76,18 @@ ob_start();
                 </div>
                 <div class="field">
                     <label class="label" for="tax_id">Tax / TIN ID</label>
-                    <input class="input" id="tax_id" name="tax_id" maxlength="64" value="<?= billo_e($val('tax_id')) ?>">
+                    <input class="input" id="tax_id" name="tax_id" maxlength="64" value="<?= billo_e($val('tax_id')) ?>" autocomplete="off">
+                    <p class="hint">Used on invoices. <strong>One workspace per country + TIN</strong>—duplicates are blocked to avoid registering the same legal entity twice.</p>
+                </div>
+                <div class="field">
+                    <label class="label" for="company_registration_number">CAC / company registration no.</label>
+                    <input class="input" id="company_registration_number" name="company_registration_number" maxlength="40" value="<?= billo_e($val('company_registration_number')) ?>" placeholder="e.g. RC 123456 or BN 789012" autocomplete="off">
+                    <p class="hint"><strong>One workspace per country + registration number</strong> on this platform (spaces and punctuation ignored when matching).</p>
+                </div>
+                <div class="field">
+                    <label class="label" for="company_website">Company website</label>
+                    <input class="input" id="company_website" name="company_website" type="text" maxlength="255" value="<?= billo_e($val('company_website')) ?>" placeholder="https://example.com or example.ng" inputmode="url" autocomplete="url">
+                    <p class="hint">Optional public site; <strong>one workspace per domain</strong> (<code>www.</code> ignored). Shown on invoice PDF/print when set.</p>
                 </div>
                 <div class="field">
                     <label class="label" for="invoice_logo_url">Logo URL or path</label>

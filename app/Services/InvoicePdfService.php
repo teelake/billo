@@ -72,6 +72,10 @@ final class InvoicePdfService
 
         $taxId = trim((string) ($organization['tax_id'] ?? ''));
         $taxHtml = $taxId !== '' ? '<div style="margin-top:8px;font-size:11px;color:#64748b">Tax ID: ' . $h($taxId) . '</div>' : '';
+        $cac = trim((string) ($organization['company_registration_number'] ?? ''));
+        $cacHtml = $cac !== '' ? '<div style="margin-top:4px;font-size:11px;color:#64748b">CAC / Reg.: ' . $h($cac) . '</div>' : '';
+        $web = trim((string) ($organization['company_website'] ?? ''));
+        $webHtml = $web !== '' ? '<div style="margin-top:4px;font-size:11px;color:#64748b">Website: ' . $h($web) . '</div>' : '';
 
         $footer = trim((string) ($organization['invoice_footer'] ?? ''));
         $footerHtml = $footer !== ''
@@ -130,7 +134,7 @@ final class InvoicePdfService
             . '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">'
             . '<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#64748b;margin-bottom:4px">' . $h($docLabel) . ' from</div>'
             . '<div style="font-size:16px;font-weight:700">' . $h($displayName) . '</div>'
-            . $addrHtml . $taxHtml . '</div>'
+            . $addrHtml . $taxHtml . $cacHtml . $webHtml . '</div>'
             . '<div style="text-align:right">'
             . '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:2px">' . $h($docLabel) . '</div>'
             . '<div style="font-size:20px;font-weight:700">' . $h($num) . '</div>'

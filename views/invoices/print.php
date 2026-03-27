@@ -111,6 +111,12 @@ $title = $num . ' — ' . $orgName;
     if (!empty($org['tax_id'])) {
         echo '<p class="letterhead-tax">Tax ID: ' . billo_e((string) $org['tax_id']) . '</p>';
     }
+    if (!empty($org['company_registration_number'])) {
+        echo '<p class="letterhead-tax">CAC / Reg.: ' . billo_e((string) $org['company_registration_number']) . '</p>';
+    }
+    if (!empty($org['company_website'])) {
+        echo '<p class="letterhead-tax">Website: ' . billo_e((string) $org['company_website']) . '</p>';
+    }
     ?>
     <h1><?= billo_e($num) ?></h1>
 

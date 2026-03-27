@@ -14,6 +14,11 @@ CREATE TABLE IF NOT EXISTS organizations (
     billing_state VARCHAR(120) NULL DEFAULT NULL,
     billing_country CHAR(2) NOT NULL DEFAULT 'NG',
     tax_id VARCHAR(64) NULL DEFAULT NULL,
+    tax_id_normalized VARCHAR(64) NULL DEFAULT NULL,
+    company_registration_number VARCHAR(40) NULL DEFAULT NULL,
+    company_registration_normalized VARCHAR(40) NULL DEFAULT NULL,
+    company_website VARCHAR(255) NULL DEFAULT NULL,
+    company_website_host VARCHAR(190) NULL DEFAULT NULL,
     invoice_footer TEXT NULL,
     invoice_logo_url VARCHAR(500) NULL DEFAULT NULL,
     slug VARCHAR(96) NOT NULL,
@@ -21,7 +26,10 @@ CREATE TABLE IF NOT EXISTS organizations (
     invoice_next_number INT UNSIGNED NOT NULL DEFAULT 1,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY organizations_slug_unique (slug)
+    UNIQUE KEY organizations_slug_unique (slug),
+    UNIQUE KEY organizations_country_tin_norm_unique (billing_country, tax_id_normalized),
+    UNIQUE KEY organizations_country_reg_norm_unique (billing_country, company_registration_normalized),
+    UNIQUE KEY organizations_website_host_unique (company_website_host)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS users (

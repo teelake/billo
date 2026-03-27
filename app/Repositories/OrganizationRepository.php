@@ -22,6 +22,56 @@ final class OrganizationRepository
         return (int) Database::pdo()->lastInsertId();
     }
 
+    public function findDuplicateTaxIdentity(string $billingCountry, string $taxNormalized, int $excludeOrganizationId): ?int
+    {
+        $stmt = Database::pdo()->prepare(
+            'SELECT id FROM organizations
+             WHERE billing_country = :country AND tax_id_normalized = :tin AND id <> :exclude
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'country' => $billingCountry,
+            'tin' => $taxNormalized,
+            'exclude' => $excludeOrganizationId,
+        ]);
+        $id = $stmt->fetchColumn();
+
+        return $id !== false ? (int) $id : null;
+    }
+
+    public function findDuplicateRegistration(string $billingCountry, string $registrationNormalized, int $excludeOrganizationId): ?int
+    {
+        $stmt = Database::pdo()->prepare(
+            'SELECT id FROM organizations
+             WHERE billing_country = :country AND company_registration_normalized = :reg AND id <> :exclude
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'country' => $billingCountry,
+            'reg' => $registrationNormalized,
+            'exclude' => $excludeOrganizationId,
+        ]);
+        $id = $stmt->fetchColumn();
+
+        return $id !== false ? (int) $id : null;
+    }
+
+    public function findDuplicateWebsiteHost(string $websiteHost, int $excludeOrganizationId): ?int
+    {
+        $stmt = Database::pdo()->prepare(
+            'SELECT id FROM organizations
+             WHERE company_website_host = :host AND id <> :exclude
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'host' => $websiteHost,
+            'exclude' => $excludeOrganizationId,
+        ]);
+        $id = $stmt->fetchColumn();
+
+        return $id !== false ? (int) $id : null;
+    }
+
     public function slugExists(string $slug): bool
     {
         $stmt = Database::pdo()->prepare('SELECT 1 FROM organizations WHERE slug = :slug LIMIT 1');
@@ -50,6 +100,11 @@ final class OrganizationRepository
      *   billing_state:?string,
      *   billing_country:string,
      *   tax_id:?string,
+     *   tax_id_normalized:?string,
+     *   company_registration_number:?string,
+     *   company_registration_normalized:?string,
+     *   company_website:?string,
+     *   company_website_host:?string,
      *   invoice_footer:?string,
      *   invoice_logo_url:?string
      * } $data
@@ -65,6 +120,11 @@ final class OrganizationRepository
                 billing_state = :billing_state,
                 billing_country = :billing_country,
                 tax_id = :tax_id,
+                tax_id_normalized = :tax_id_normalized,
+                company_registration_number = :company_registration_number,
+                company_registration_normalized = :company_registration_normalized,
+                company_website = :company_website,
+                company_website_host = :company_website_host,
                 invoice_footer = :invoice_footer,
                 invoice_logo_url = :invoice_logo_url,
                 updated_at = CURRENT_TIMESTAMP
@@ -79,6 +139,11 @@ final class OrganizationRepository
             'billing_state' => $data['billing_state'],
             'billing_country' => $data['billing_country'],
             'tax_id' => $data['tax_id'],
+            'tax_id_normalized' => $data['tax_id_normalized'],
+            'company_registration_number' => $data['company_registration_number'],
+            'company_registration_normalized' => $data['company_registration_normalized'],
+            'company_website' => $data['company_website'],
+            'company_website_host' => $data['company_website_host'],
             'invoice_footer' => $data['invoice_footer'],
             'invoice_logo_url' => $data['invoice_logo_url'],
         ]);

@@ -10,6 +10,8 @@ use App\Core\Request;
 use App\Core\Session;
 use App\Core\View;
 use App\Repositories\OrganizationRepository;
+use App\Support\OrganizationIdentityNormalizer;
+use PDOException;
 
 final class OrganizationController extends Controller
 {
@@ -46,13 +48,25 @@ final class OrganizationController extends Controller
             $this->redirect('/organization');
         }
 
-        $payload = $this->validatedPayload();
+        $payload = $this->validatedPayload((int) $ctx['organization_id']);
         if (is_string($payload)) {
             Session::flash('error', $payload);
             $this->redirect('/organization');
         }
 
-        $this->organizations->updateBranding($ctx['organization_id'], $payload);
+        try {
+            $this->organizations->updateBranding($ctx['organization_id'], $payload);
+        } catch (PDOException $e) {
+            $code = isset($e->errorInfo[1]) ? (int) $e->errorInfo[1] : 0;
+            if ($code === 1062) {
+                Session::flash(
+                    'error',
+                    'Another workspace is already registered with this tax ID, company registration number (for your country), or website. If this is your business, contact support.'
+                );
+                $this->redirect('/organization');
+            }
+            throw $e;
+        }
         Session::flash('success', 'Business details saved. They appear on printed invoices, PDFs, and emails.');
         $this->redirect('/organization');
     }
@@ -71,11 +85,16 @@ final class OrganizationController extends Controller
      *   billing_state:?string,
      *   billing_country:string,
      *   tax_id:?string,
+     *   tax_id_normalized:?string,
+     *   company_registration_number:?string,
+     *   company_registration_normalized:?string,
+     *   company_website:?string,
+     *   company_website_host:?string,
      *   invoice_footer:?string,
      *   invoice_logo_url:?string
      * }|string
      */
-    private function validatedPayload(): array|string
+    private function validatedPayload(int $organizationId): array|string
     {
         $legal = $this->trimOrNull($this->request->input('legal_name', ''), 200);
         $l1 = $this->trimOrNull($this->request->input('billing_address_line1', ''), 255);
@@ -87,6 +106,14 @@ final class OrganizationController extends Controller
             $country = 'NG';
         }
         $tax = $this->trimOrNull($this->request->input('tax_id', ''), 64);
+        $taxNorm = OrganizationIdentityNormalizer::normalizeTaxId($tax);
+        $cac = $this->trimOrNull($this->request->input('company_registration_number', ''), 40);
+        $cacNorm = OrganizationIdentityNormalizer::normalizeCompanyRegistration($cac);
+        $website = $this->trimOrNull($this->request->input('company_website', ''), 255);
+        $websiteHost = OrganizationIdentityNormalizer::normalizeWebsiteHost($website);
+        if ($website !== null && $websiteHost === null) {
+            return 'Enter a valid company website (URL or domain, e.g. https://example.com or example.ng).';
+        }
         $footer = $this->trimOrNull($this->request->input('invoice_footer', ''), 65535);
         $logo = $this->trimOrNull($this->request->input('invoice_logo_url', ''), 500);
 
@@ -100,6 +127,25 @@ final class OrganizationController extends Controller
             }
         }
 
+        if ($taxNorm !== null) {
+            $dup = $this->organizations->findDuplicateTaxIdentity($country, $taxNorm, $organizationId);
+            if ($dup !== null) {
+                return 'Another workspace already uses this tax ID (TIN) for the selected country.';
+            }
+        }
+        if ($cacNorm !== null) {
+            $dup = $this->organizations->findDuplicateRegistration($country, $cacNorm, $organizationId);
+            if ($dup !== null) {
+                return 'Another workspace already uses this company registration number (e.g. CAC) for the selected country.';
+            }
+        }
+        if ($websiteHost !== null) {
+            $dup = $this->organizations->findDuplicateWebsiteHost($websiteHost, $organizationId);
+            if ($dup !== null) {
+                return 'Another workspace is already linked to this website domain.';
+            }
+        }
+
         return [
             'legal_name' => $legal,
             'billing_address_line1' => $l1,
@@ -108,6 +154,11 @@ final class OrganizationController extends Controller
             'billing_state' => $state,
             'billing_country' => $country,
             'tax_id' => $tax,
+            'tax_id_normalized' => $taxNorm,
+            'company_registration_number' => $cac,
+            'company_registration_normalized' => $cacNorm,
+            'company_website' => $website,
+            'company_website_host' => $websiteHost,
             'invoice_footer' => $footer,
             'invoice_logo_url' => $logo,
         ];
