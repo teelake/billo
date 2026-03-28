@@ -4,24 +4,128 @@
 (function () {
     const toggle = document.querySelector(".nav-toggle");
     const nav = document.querySelector("#primary-nav");
+    const overlay = document.getElementById("site-nav-overlay");
+    const mainEl = document.getElementById("main");
+    const footerEl = document.querySelector(".site-footer");
+    const body = document.body;
     if (!toggle || !nav) {
         return;
     }
+
+    const mqDrawer = window.matchMedia("(max-width: 860px)");
+
+    const getNavFocusables = () => {
+        const nodes = nav.querySelectorAll("a[href], button:not([disabled])");
+        return Array.from(nodes).filter((el) => {
+            if (!(el instanceof HTMLElement)) {
+                return false;
+            }
+            if (el.getAttribute("tabindex") === "-1") {
+                return false;
+            }
+            return el.offsetParent !== null || el.getClientRects().length > 0;
+        });
+    };
+
+    const syncDrawerTabIndex = () => {
+        const drawerMode = mqDrawer.matches;
+        const open = nav.classList.contains("is-open");
+        nav.querySelectorAll("a[href], button").forEach((el) => {
+            if (!(el instanceof HTMLElement) || el === toggle) {
+                return;
+            }
+            if (!drawerMode || open) {
+                el.removeAttribute("tabindex");
+            } else {
+                el.setAttribute("tabindex", "-1");
+            }
+        });
+    };
+
+    const setBehindDrawerInert = (locked) => {
+        if (mainEl) {
+            if (locked) {
+                mainEl.setAttribute("inert", "");
+            } else {
+                mainEl.removeAttribute("inert");
+            }
+        }
+        if (footerEl) {
+            if (locked) {
+                footerEl.setAttribute("inert", "");
+            } else {
+                footerEl.removeAttribute("inert");
+            }
+        }
+    };
+
+    const openNav = () => {
+        nav.classList.add("is-open");
+        toggle.setAttribute("aria-expanded", "true");
+        toggle.setAttribute("aria-label", "Close menu");
+        overlay?.removeAttribute("hidden");
+        body.classList.add("nav-drawer-open");
+        setBehindDrawerInert(true);
+        syncDrawerTabIndex();
+        requestAnimationFrame(() => {
+            const items = getNavFocusables();
+            if (items.length > 0) {
+                items[0].focus();
+            }
+        });
+    };
 
     const closeNav = () => {
         nav.classList.remove("is-open");
         toggle.setAttribute("aria-expanded", "false");
         toggle.setAttribute("aria-label", "Open menu");
+        overlay?.setAttribute("hidden", "");
+        body.classList.remove("nav-drawer-open");
+        setBehindDrawerInert(false);
+        syncDrawerTabIndex();
     };
 
     toggle.addEventListener("click", () => {
-        const open = nav.classList.toggle("is-open");
-        toggle.setAttribute("aria-expanded", open ? "true" : "false");
-        toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+        if (nav.classList.contains("is-open")) {
+            closeNav();
+        } else {
+            openNav();
+        }
+    });
+
+    overlay?.addEventListener("click", () => {
+        closeNav();
     });
 
     nav.querySelectorAll("a").forEach((link) => {
         link.addEventListener("click", closeNav);
+    });
+
+    nav.addEventListener("keydown", (e) => {
+        if (!nav.classList.contains("is-open") || e.key !== "Tab") {
+            return;
+        }
+        const items = getNavFocusables();
+        if (items.length === 0) {
+            return;
+        }
+        const first = items[0];
+        const last = items[items.length - 1];
+        const active = document.activeElement;
+        if (items.length === 1) {
+            e.preventDefault();
+            first.focus();
+            return;
+        }
+        if (e.shiftKey) {
+            if (active === first) {
+                e.preventDefault();
+                last.focus();
+            }
+        } else if (active === last) {
+            e.preventDefault();
+            first.focus();
+        }
     });
 
     document.addEventListener("keydown", (e) => {
@@ -39,11 +143,20 @@
         if (!(t instanceof Node)) {
             return;
         }
-        if (toggle.contains(t) || nav.contains(t)) {
+        if (toggle.contains(t) || nav.contains(t) || overlay?.contains(t)) {
             return;
         }
         closeNav();
     });
+
+    mqDrawer.addEventListener("change", () => {
+        if (!mqDrawer.matches) {
+            closeNav();
+        }
+        syncDrawerTabIndex();
+    });
+
+    syncDrawerTabIndex();
 })();
 
 /** Invoice line editor: add/remove rows, assign indexed `lines[n][field]` names */

@@ -54,6 +54,7 @@ $metaDescription = $brandTagline !== '' ? $brandTagline : $heroSubPlain;
         </nav>
     </div>
 </header>
+<button type="button" id="site-nav-overlay" class="site-nav-overlay" aria-label="Close menu" tabindex="-1" hidden></button>
 <main id="main">
     <?= $content ?>
 </main>

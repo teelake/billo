@@ -299,6 +299,49 @@ body.layout-main .container {
     border-radius: 2px;
 }
 
+/* Dim page behind mobile drawer (button for a11y + click to close) */
+.site-nav-overlay {
+    display: block;
+    position: fixed;
+    top: var(--header-h);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 44;
+    margin: 0;
+    padding: 0;
+    border: none;
+    width: 100%;
+    background: rgba(15, 23, 42, 0.48);
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.22s ease, visibility 0.22s ease;
+}
+
+.site-nav-overlay:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -4px;
+}
+
+.site-nav-overlay:not([hidden]) {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+@media (min-width: 861px) {
+    .site-nav-overlay {
+        display: none !important;
+    }
+}
+
+body.layout-main.nav-drawer-open {
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
 @media (max-width: 860px) {
     .nav-toggle {
         display: flex;
@@ -817,7 +860,8 @@ body.layout-main .container {
         scroll-behavior: auto;
     }
 
-    .site-nav {
+    .site-nav,
+    .site-nav-overlay {
         transition: none !important;
     }
 
