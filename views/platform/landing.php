@@ -129,8 +129,9 @@ ob_start();
                         <div class="field field--inline">
                             <label class="label">Visible on site</label>
                             <select class="input input--sm" name="faq_active[]">
-                                <option value="1"<?= !empty($row['is_active']) ? ' selected' : '' ?>>Yes</option>
-                                <option value="0"<?= empty($row['is_active']) ? ' selected' : '' ?>>No</option>
+                                <?php $faqOn = (int) ($row['is_active'] ?? 1) === 1; ?>
+                                <option value="1"<?= $faqOn ? ' selected' : '' ?>>Yes</option>
+                                <option value="0"<?= !$faqOn ? ' selected' : '' ?>>No</option>
                             </select>
                         </div>
                     </div>
@@ -162,8 +163,9 @@ ob_start();
                         <div class="field field--inline">
                             <label class="label">Visible</label>
                             <select class="input input--sm" name="trusted_active[]">
-                                <option value="1"<?= !empty($row['is_active']) ? ' selected' : '' ?>>Yes</option>
-                                <option value="0"<?= empty($row['is_active']) ? ' selected' : '' ?>>No</option>
+                                <?php $trOn = (int) ($row['is_active'] ?? 1) === 1; ?>
+                                <option value="1"<?= $trOn ? ' selected' : '' ?>>Yes</option>
+                                <option value="0"<?= !$trOn ? ' selected' : '' ?>>No</option>
                             </select>
                         </div>
                     </div>
@@ -202,8 +204,9 @@ ob_start();
                         <div class="field field--inline">
                             <label class="label">Visible</label>
                             <select class="input input--sm" name="testimonial_active[]">
-                                <option value="1"<?= !empty($row['is_active']) ? ' selected' : '' ?>>Yes</option>
-                                <option value="0"<?= empty($row['is_active']) ? ' selected' : '' ?>>No</option>
+                                <?php $tsOn = (int) ($row['is_active'] ?? 1) === 1; ?>
+                                <option value="1"<?= $tsOn ? ' selected' : '' ?>>Yes</option>
+                                <option value="0"<?= !$tsOn ? ' selected' : '' ?>>No</option>
                             </select>
                         </div>
                     </div>
