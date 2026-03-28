@@ -496,6 +496,11 @@ body.layout-main .container {
     padding-right: clamp(0.25rem, 1.5vw, 1rem);
 }
 
+/* 65ch resolved on this font context so subtitle, trust, and note share one width */
+.hero--premium .hero__copy {
+    --hero-max-prose: min(65ch, 100%);
+}
+
 @media (max-width: 960px) {
     .hero.hero--premium {
         min-height: 0;
@@ -572,6 +577,13 @@ body.layout-main .container {
     max-width: 100%;
     margin: 0 0 1.5rem;
     line-height: 1.6;
+}
+
+.hero--premium .hero__subtitle,
+.hero--premium .hero__subtitle.landing-rich,
+.hero--premium .hero__trust,
+.hero--premium .hero__note {
+    max-width: var(--hero-max-prose);
 }
 
 .hero__actions {
@@ -3788,7 +3800,6 @@ select.input {
 .hero__subtitle.landing-rich {
     font-size: 1.0625rem;
     color: var(--color-muted);
-    max-width: 100%;
     line-height: 1.6;
 }
 .hero__frame--photo .hero__photo {
