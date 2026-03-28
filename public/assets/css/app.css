@@ -481,8 +481,9 @@ body.layout-main .container {
 
 .hero__inner {
     display: grid;
-    grid-template-columns: 1.05fr 0.95fr;
-    gap: clamp(2.25rem, 5.5vw, 4.5rem);
+    /* Favor copy: wider first column so lead + CTAs breathe; visual stays secondary */
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+    gap: clamp(1.75rem, 4vw, 3.25rem);
     align-items: center;
     min-width: 0;
     width: 100%;
@@ -492,14 +493,7 @@ body.layout-main .container {
 .hero__copy {
     min-width: 0;
     max-width: 100%;
-    /* Keep the text column at a comfortable reading measure on wide grids */
-    padding-right: clamp(0rem, 2vw, 1.5rem);
-}
-
-@media (min-width: 961px) {
-    .hero__copy {
-        max-width: min(36rem, 100%);
-    }
+    padding-right: clamp(0.25rem, 1.5vw, 1rem);
 }
 
 @media (max-width: 960px) {
@@ -542,6 +536,9 @@ body.layout-main .container {
 
 .hero--premium .hero__copy > .eyebrow:first-child {
     margin-top: 0.15rem;
+    margin-bottom: 0.65rem;
+    font-size: 0.8125rem;
+    letter-spacing: 0.1em;
 }
 
 .eyebrow--dark {
@@ -570,11 +567,11 @@ body.layout-main .container {
 }
 
 .hero__subtitle {
-    font-size: 1.05rem;
+    font-size: 1.0625rem;
     color: var(--color-muted);
-    max-width: min(34rem, 100%);
-    margin: 0 0 1.75rem;
-    line-height: 1.58;
+    max-width: 100%;
+    margin: 0 0 1.5rem;
+    line-height: 1.6;
 }
 
 .hero__actions {
@@ -595,7 +592,7 @@ body.layout-main .container {
     letter-spacing: 0.02em;
     color: var(--color-secondary);
     margin: 0 0 0.5rem;
-    max-width: min(34rem, 100%);
+    max-width: 100%;
     line-height: 1.45;
 }
 
@@ -603,7 +600,7 @@ body.layout-main .container {
     font-size: 0.88rem;
     color: var(--color-muted);
     margin: 0 0 0.25rem;
-    max-width: min(34rem, 100%);
+    max-width: 100%;
     line-height: 1.55;
     padding-bottom: 0.25rem;
 }
@@ -3789,10 +3786,10 @@ select.input {
     margin-bottom: 0;
 }
 .hero__subtitle.landing-rich {
-    font-size: 1.05rem;
+    font-size: 1.0625rem;
     color: var(--color-muted);
-    max-width: min(34rem, 100%);
-    line-height: 1.58;
+    max-width: 100%;
+    line-height: 1.6;
 }
 .hero__frame--photo .hero__photo {
     width: 100%;

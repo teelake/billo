@@ -28,7 +28,7 @@ ob_start();
                 <span class="text-gradient"><?= billo_e(billo_landing('hero_title_line1', 'NRS-compliant')) ?></span>
                 <?= billo_e(billo_landing('hero_title_line2', 'invoice software')) ?>
             </h1>
-            <div class="hero__subtitle landing-rich"><?= billo_landing_html('hero_subtitle', '<p>Turn quotes into paid invoices faster—branded PDFs, multi-currency totals, and a clear path to Nigeria-aligned (NRS) workflows when your operations mature. Built for freelancers, retailers, and finance-led teams.</p>') ?></div>
+            <div class="hero__subtitle landing-rich"><?= billo_landing_html('hero_subtitle', '<p>Branded PDFs, multi-currency totals, and NRS-ready workflows when you need them—from quote to paid. Built for Nigerian freelancers, retailers, and finance-led teams.</p>') ?></div>
             <div class="hero__actions">
                 <a class="btn btn--primary btn--lg" href="<?= billo_e(billo_url('/signup')) ?>"><?= billo_e(billo_landing('hero_cta_primary', 'Start free')) ?></a>
                 <a class="btn btn--secondary btn--lg" href="<?= billo_e(billo_url('/login')) ?>"><?= billo_e(billo_landing('hero_cta_secondary', 'Log in')) ?></a>
