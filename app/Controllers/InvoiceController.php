@@ -36,7 +36,7 @@ final class InvoiceController extends Controller
 
     public function index(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         $list = $this->invoices->listForOrganization($ctx['organization_id']);
         $canManage = $this->canManageInvoices($ctx['role']);
 
@@ -53,7 +53,7 @@ final class InvoiceController extends Controller
 
     public function show(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         $id = $this->intIdFromRequest();
         if ($id === null) {
             Session::flash('error', 'Invalid invoice.');
@@ -97,7 +97,7 @@ final class InvoiceController extends Controller
 
     public function create(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         if (!$this->canManageInvoices($ctx['role'])) {
             Session::flash('error', 'You can view invoices but not create them.');
             $this->redirect('/invoices');
@@ -125,7 +125,7 @@ final class InvoiceController extends Controller
 
     public function store(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         if (!$this->canManageInvoices($ctx['role'])) {
             $this->redirect('/invoices');
         }
@@ -188,7 +188,7 @@ final class InvoiceController extends Controller
 
     public function edit(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         if (!$this->canManageInvoices($ctx['role'])) {
             Session::flash('error', 'You can view invoices but not edit them.');
             $this->redirect('/invoices');
@@ -233,7 +233,7 @@ final class InvoiceController extends Controller
 
     public function update(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         if (!$this->canManageInvoices($ctx['role'])) {
             $this->redirect('/invoices');
         }
@@ -312,7 +312,7 @@ final class InvoiceController extends Controller
 
     public function destroy(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         if (!$this->canManageInvoices($ctx['role'])) {
             $this->redirect('/invoices');
         }
@@ -337,7 +337,7 @@ final class InvoiceController extends Controller
 
     public function send(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         if (!$this->canManageInvoices($ctx['role'])) {
             $this->redirect('/invoices');
         }
@@ -377,7 +377,7 @@ final class InvoiceController extends Controller
 
     public function markPaid(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         if (!$this->canManageInvoices($ctx['role'])) {
             $this->redirect('/invoices');
         }
@@ -402,7 +402,7 @@ final class InvoiceController extends Controller
 
     public function markVoid(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         if (!$this->canManageInvoices($ctx['role'])) {
             $this->redirect('/invoices');
         }
@@ -428,7 +428,7 @@ final class InvoiceController extends Controller
     /** Print-ready HTML; use browser Print → Save as PDF. */
     public function printView(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         $id = $this->intIdFromRequest();
         if ($id === null) {
             Session::flash('error', 'Invalid invoice.');
@@ -451,7 +451,7 @@ final class InvoiceController extends Controller
 
     public function pdf(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         $id = $this->intIdFromRequest();
         if ($id === null) {
             Session::flash('error', 'Invalid invoice.');
@@ -489,7 +489,7 @@ final class InvoiceController extends Controller
 
     public function emailClient(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         if (!$this->canManageInvoices($ctx['role'])) {
             $this->redirect('/invoices');
         }
@@ -550,7 +550,7 @@ final class InvoiceController extends Controller
 
     public function startCreditNote(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         if (!$this->canManageInvoices($ctx['role'])) {
             $this->redirect('/invoices');
         }

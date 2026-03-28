@@ -18,9 +18,10 @@ $canOrg = in_array($role, ['owner', 'admin'], true);
 $canPlatform = (function_exists('billo_is_platform_admin') && billo_is_platform_admin())
     || (function_exists('billo_is_system_admin') && billo_is_system_admin());
 $isSystem = function_exists('billo_is_system_admin') && billo_is_system_admin();
+$operatorOnly = function_exists('billo_operator_without_tenant') && billo_operator_without_tenant();
 $navMode = function_exists('billo_app_nav_mode') ? billo_app_nav_mode() : 'organization';
-$showOrgNav = !$isSystem || $navMode === 'organization';
-$showPlatformOperatorNav = $isSystem && $navMode === 'platform';
+$showOrgNav = !$operatorOnly && (!$isSystem || $navMode === 'organization');
+$showPlatformOperatorNav = $isSystem && ($operatorOnly || $navMode === 'platform');
 
 $initials = 'B';
 if ($userName !== '') {
@@ -150,7 +151,7 @@ if (function_exists('mb_strlen') && mb_strlen($initials, 'UTF-8') > 2) {
             </a>
         <?php endif; ?>
 
-        <?php if ($isSystem): ?>
+        <?php if ($isSystem && !$operatorOnly): ?>
             <div class="app-sidebar__mode" role="group" aria-label="Navigation context">
                 <span class="app-sidebar__mode-label"><?= $navMode === 'platform' ? 'Platform view' : 'Organization view' ?></span>
                 <?php if ($navMode === 'organization'): ?>

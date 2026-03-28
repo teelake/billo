@@ -23,6 +23,11 @@ final class NavContextController extends \App\Core\Controller
             $this->redirect('/login');
         }
 
+        if (function_exists('billo_operator_without_tenant') && billo_operator_without_tenant()) {
+            Session::flash('error', 'Your account is platform-only—organization view is not available.');
+            $this->redirect('/dashboard');
+        }
+
         $mode = (string) ($this->request->input('mode', '') ?? '');
         if (!in_array($mode, ['organization', 'platform'], true)) {
             $this->redirect('/dashboard');

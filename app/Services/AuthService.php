@@ -51,14 +51,15 @@ final class AuthService
         }
 
         $userId = (int) $user['id'];
-        $pref = isset($user['active_organization_id']) && $user['active_organization_id'] !== null
-            ? (int) $user['active_organization_id'] : null;
-        $membership = $this->members->membershipForUserPreferringOrg($userId, $pref);
+        $membership = $this->resolveSessionMembership($userId, $user);
         if ($membership === null) {
             return false;
         }
 
-        $this->users->setActiveOrganization($userId, $membership['organization_id']);
+        $this->users->setActiveOrganization(
+            $userId,
+            $membership['organization_id'] > 0 ? $membership['organization_id'] : null
+        );
         $this->establishSession($userId, $user, $membership);
 
         return true;
@@ -608,7 +609,9 @@ final class AuthService
         Session::set('role', $membership['role']);
         Session::set('user_name', (string) $userRow['name']);
         Session::set('user_email', (string) $userRow['email']);
-        Session::set('is_system_admin', $this->platformAdminGrants->userHasActiveGrant($userId));
+        $op = $this->platformAdminGrants->userHasActiveGrant($userId)
+            || (int) ($userRow['is_system_admin'] ?? 0) === 1;
+        Session::set('is_system_admin', $op);
     }
 
     private function issueVerificationEmail(int $userId): void
@@ -705,15 +708,39 @@ final class AuthService
     private function establishOAuthSessionForUser(array $userRow): ?string
     {
         $userId = (int) $userRow['id'];
-        $pref = isset($userRow['active_organization_id']) && $userRow['active_organization_id'] !== null
-            ? (int) $userRow['active_organization_id'] : null;
-        $membership = $this->members->membershipForUserPreferringOrg($userId, $pref);
+        $membership = $this->resolveSessionMembership($userId, $userRow);
         if ($membership === null) {
             return 'Your account is not linked to an organization yet. Use an invitation link or contact support.';
         }
 
-        $this->users->setActiveOrganization($userId, $membership['organization_id']);
+        $this->users->setActiveOrganization(
+            $userId,
+            $membership['organization_id'] > 0 ? $membership['organization_id'] : null
+        );
         $this->establishSession($userId, $userRow, $membership);
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $userRow
+     *
+     * @return array{organization_id:int,role:string}|null
+     */
+    private function resolveSessionMembership(int $userId, array $userRow): ?array
+    {
+        $pref = isset($userRow['active_organization_id']) && $userRow['active_organization_id'] !== null
+            ? (int) $userRow['active_organization_id'] : null;
+        $membership = $this->members->membershipForUserPreferringOrg($userId, $pref);
+        if ($membership !== null) {
+            return $membership;
+        }
+
+        $grant = $this->platformAdminGrants->userHasActiveGrant($userId);
+        $legacyFlag = (int) ($userRow['is_system_admin'] ?? 0) === 1;
+        if ($grant || $legacyFlag) {
+            return ['organization_id' => 0, 'role' => 'platform_operator'];
+        }
 
         return null;
     }

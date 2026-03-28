@@ -71,12 +71,28 @@ abstract class Controller
     }
 
     /**
+     * Blocks platform-only operator accounts (no organization) from tenant routes.
+     *
+     * @return array{user_id:int, organization_id:int, role:string}
+     */
+    protected function requireOrganizationTenant(): array
+    {
+        $ctx = $this->requireAuth();
+        if ($ctx['organization_id'] <= 0) {
+            Session::flash('error', 'That area is for organization accounts. Use the platform menu instead.');
+            $this->redirect('/dashboard');
+        }
+
+        return $ctx;
+    }
+
+    /**
      * @param list<string> $roles
      * @return array{user_id:int, organization_id:int, role:string}
      */
     protected function requireAuthRole(array $roles): array
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         if (!in_array($ctx['role'], $roles, true)) {
             Session::flash('error', 'You do not have permission to do that.');
             $this->redirect('/dashboard');

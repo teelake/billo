@@ -89,6 +89,21 @@ function billo_landing(string $key, string $default = ''): string
     return $default;
 }
 
+/** Allowed tags for Quill/admin-authored HTML on the marketing site. */
+function billo_sanitize_landing_html(string $html): string
+{
+    $allowed = '<p><br><br/><strong><b><em><i><u><a><ul><ol><li><h2><h3><h4><blockquote><span>';
+    $html = strip_tags($html, $allowed);
+
+    return preg_replace('/\son\w+\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html) ?? $html;
+}
+
+/** Rich landing field: sanitize then output raw HTML in templates (not billo_e). */
+function billo_landing_html(string $key, string $default = ''): string
+{
+    return billo_sanitize_landing_html(billo_landing($key, $default));
+}
+
 /** Session user email is listed in config platform.admin_emails (list of strings). */
 function billo_invoice_pay_links_available(): bool
 {
@@ -96,8 +111,8 @@ function billo_invoice_pay_links_available(): bool
 }
 
 /**
- * True when the signed-in user has an active row in platform_admin_grants.
- * Password and identity remain on users; grants only confer platform operator access.
+ * True when the signed-in user has platform operator access:
+ * active platform_admin_grants row and/or users.is_system_admin = 1.
  */
 function billo_is_system_admin(): bool
 {
@@ -119,9 +134,27 @@ function billo_is_system_admin(): bool
         return $cached;
     }
     $cachedUid = $uid;
-    $cached = (new \App\Repositories\PlatformAdminGrantRepository())->userHasActiveGrant($uid);
+    $grants = new \App\Repositories\PlatformAdminGrantRepository();
+    if ($grants->userHasActiveGrant($uid)) {
+        $cached = true;
+
+        return true;
+    }
+    $cached = (new \App\Repositories\UserRepository())->userHasPlatformOperatorFlag($uid);
 
     return $cached;
+}
+
+/** Platform operator signed in without any organization membership (tenant tools hidden). */
+function billo_operator_without_tenant(): bool
+{
+    if (!billo_is_system_admin()) {
+        return false;
+    }
+    $oid = Session::get('organization_id');
+    $role = Session::get('role');
+
+    return (is_numeric($oid) ? (int) $oid : -1) === 0 && $role === 'platform_operator';
 }
 
 /**
@@ -130,6 +163,9 @@ function billo_is_system_admin(): bool
  */
 function billo_app_nav_mode(): string
 {
+    if (function_exists('billo_operator_without_tenant') && billo_operator_without_tenant()) {
+        return 'platform';
+    }
     if (!function_exists('billo_is_system_admin') || !billo_is_system_admin()) {
         return 'organization';
     }

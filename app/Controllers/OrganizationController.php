@@ -145,7 +145,7 @@ final class OrganizationController extends Controller
     /** Serve uploaded invoice logo for current organization (authenticated). */
     public function logo(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         $org = $this->organizations->findById($ctx['organization_id']);
         if ($org === null) {
             http_response_code(404);

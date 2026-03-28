@@ -21,7 +21,7 @@ final class ClientController extends Controller
 
     public function index(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         $list = $this->clients->listForOrganization($ctx['organization_id']);
         $canManage = $this->canManageClients($ctx['role']);
 
@@ -38,7 +38,7 @@ final class ClientController extends Controller
 
     public function create(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         if (!$this->canManageClients($ctx['role'])) {
             Session::flash('error', 'You can view clients but not add or edit them.');
             $this->redirect('/clients');
@@ -56,7 +56,7 @@ final class ClientController extends Controller
 
     public function store(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         if (!$this->canManageClients($ctx['role'])) {
             $this->redirect('/clients');
         }
@@ -78,7 +78,7 @@ final class ClientController extends Controller
 
     public function edit(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         if (!$this->canManageClients($ctx['role'])) {
             Session::flash('error', 'You can view clients but not edit them.');
             $this->redirect('/clients');
@@ -108,7 +108,7 @@ final class ClientController extends Controller
 
     public function update(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         if (!$this->canManageClients($ctx['role'])) {
             $this->redirect('/clients');
         }
@@ -141,7 +141,7 @@ final class ClientController extends Controller
 
     public function destroy(): void
     {
-        $ctx = $this->requireAuth();
+        $ctx = $this->requireOrganizationTenant();
         if (!$this->canManageClients($ctx['role'])) {
             $this->redirect('/clients');
         }

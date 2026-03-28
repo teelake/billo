@@ -172,4 +172,19 @@ final class UserRepository
 
         return (int) $n;
     }
+
+    /** Legacy column; combined with platform_admin_grants in billo_is_system_admin(). */
+    public function userHasPlatformOperatorFlag(int $userId): bool
+    {
+        if ($userId <= 0) {
+            return false;
+        }
+        $stmt = Database::pdo()->prepare(
+            'SELECT is_system_admin FROM users WHERE id = :id LIMIT 1'
+        );
+        $stmt->execute(['id' => $userId]);
+        $v = $stmt->fetchColumn();
+
+        return (int) $v === 1;
+    }
 }
