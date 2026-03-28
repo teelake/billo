@@ -36,6 +36,7 @@ final class PlatformLandingController extends Controller
         'landing.footer_tagline',
         'landing.meta_title',
         'landing.hero_image_url',
+        'landing.hero_image_alt',
         'landing.faqs_section_title',
         'landing.trusted_section_title',
         'landing.testimonials_section_title',

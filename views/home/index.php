@@ -19,7 +19,8 @@ $heroImgOk = $heroImg !== '' && (str_starts_with($heroImg, 'https://') || str_st
 $title = billo_landing('meta_title', 'billo — NRS-compliant invoice software for Nigeria');
 ob_start();
 ?>
-<section class="hero">
+<section class="hero hero--premium">
+    <div class="hero__aurora" aria-hidden="true"></div>
     <div class="container hero__inner">
         <div class="hero__copy">
             <p class="eyebrow"><?= billo_e(billo_landing('hero_eyebrow', 'Nigeria · SMEs · Enterprises')) ?></p>
@@ -34,22 +35,105 @@ ob_start();
             </div>
             <p class="hero__note"><?= billo_e(billo_landing('hero_note', 'Finish setup after you sign up—get working in minutes.')) ?></p>
         </div>
-        <div class="hero__visual<?= $heroImgOk ? ' hero__visual--photo' : '' ?>" aria-hidden="<?= $heroImgOk ? 'false' : 'true' ?>">
-            <?php if ($heroImgOk): ?>
-                <img class="hero__photo" src="<?= billo_e($heroImg) ?>" alt="" width="560" height="420" loading="lazy" decoding="async">
-            <?php else: ?>
-            <div class="invoice-card">
-                <div class="invoice-card__header">
-                    <span class="invoice-card__logo"></span>
-                    <span class="invoice-card__badge">Paid</span>
+        <div class="hero__visual">
+            <div class="hero__scene"<?= $heroImgOk ? '' : ' aria-hidden="true"' ?>>
+                <div class="hero__float hero__float--coin" aria-hidden="true">
+                    <svg viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" class="hero__float-svg">
+                        <defs>
+                            <linearGradient id="hcoin" x1="10" y1="10" x2="62" y2="62"><stop stop-color="#16a34a"/><stop offset="1" stop-color="#1e3a8a"/></linearGradient>
+                        </defs>
+                        <circle cx="36" cy="36" r="32" stroke="url(#hcoin)" stroke-width="2.5" fill="rgba(255,255,255,0.72)"/>
+                        <circle cx="36" cy="36" r="24" stroke="rgba(30,58,138,0.1)" stroke-width="1"/>
+                        <text x="36" y="45" text-anchor="middle" font-family="Plus Jakarta Sans, Inter, system-ui, sans-serif" font-size="26" font-weight="800" fill="#15803d">₦</text>
+                    </svg>
                 </div>
-                <div class="invoice-card__rows">
-                    <div class="invoice-card__row"><span></span><span></span></div>
-                    <div class="invoice-card__row"><span></span><span></span></div>
-                    <div class="invoice-card__row invoice-card__row--accent"><span></span><span></span></div>
+                <div class="hero__float hero__float--check" aria-hidden="true">
+                    <svg viewBox="0 0 64 64" class="hero__float-svg" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="6" y="6" width="52" height="52" rx="16" fill="rgba(22,163,74,0.12)" stroke="#16a34a" stroke-width="1.5"/>
+                        <path d="M20 33l8 8 16-20" stroke="#15803d" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div class="hero__float hero__float--receipt" aria-hidden="true">
+                    <svg viewBox="0 0 56 80" class="hero__float-svg" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 4h40v68l-6-4-6 4-6-4-6 4-6-4-6 4V4z" fill="rgba(255,255,255,0.85)" stroke="#cbd5e1" stroke-width="1.5"/>
+                        <path d="M16 18h24M16 28h20M16 38h24M16 48h14" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M16 60h24" stroke="#1e3a8a" stroke-width="2.5" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div class="hero__float hero__float--chart" aria-hidden="true">
+                    <svg viewBox="0 0 70 56" class="hero__float-svg" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="4" y="4" width="62" height="48" rx="10" fill="rgba(30,58,138,0.06)" stroke="rgba(30,58,138,0.2)" stroke-width="1"/>
+                        <path d="M14 38V22M28 38V14M42 38V26M56 38V18" stroke-linecap="round" stroke-width="5" stroke="#1e3a8a" opacity="0.35"/>
+                        <path d="M14 38V24M28 38V16M42 38V28M56 38V20" stroke-linecap="round" stroke-width="5" stroke="url(#hbar)"/>
+                        <defs><linearGradient id="hbar" x1="14" y1="40" x2="56" y2="12"><stop stop-color="#16a34a"/><stop offset="1" stop-color="#facc15"/></linearGradient></defs>
+                    </svg>
+                </div>
+                <div class="hero__float hero__float--card" aria-hidden="true">
+                    <svg viewBox="0 0 88 56" class="hero__float-svg" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="4" y="8" width="80" height="40" rx="10" fill="rgba(30,58,138,0.92)"/>
+                        <rect x="4" y="8" width="80" height="12" rx="10" fill="#facc15" opacity="0.95"/>
+                        <rect x="4" y="18" width="80" height="6" fill="#facc15" opacity="0.95"/>
+                        <rect x="12" y="32" width="28" height="5" rx="2" fill="rgba(255,255,255,0.35)"/>
+                        <rect x="12" y="40" width="18" height="4" rx="2" fill="rgba(255,255,255,0.2)"/>
+                    </svg>
+                </div>
+                <div class="hero__float hero__float--ring" aria-hidden="true">
+                    <svg viewBox="0 0 48 48" class="hero__float-svg hero__float-svg--spin" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="24" cy="24" r="20" stroke="rgba(22,163,74,0.25)" stroke-width="1.5"/>
+                        <circle cx="24" cy="24" r="12" stroke="rgba(30,58,138,0.2)" stroke-width="1.5" stroke-dasharray="4 6"/>
+                    </svg>
+                </div>
+                <div class="hero__frame<?= $heroImgOk ? ' hero__frame--photo' : '' ?>">
+            <?php if ($heroImgOk): ?>
+                <img class="hero__photo" src="<?= billo_e($heroImg) ?>" alt="<?= billo_e(billo_landing('hero_image_alt', billo_brand_name() . ' — product preview')) ?>" width="560" height="420" loading="lazy" decoding="async">
+            <?php else: ?>
+            <article class="invoice-card invoice-card--hero">
+                <div class="invoice-card__sheen" aria-hidden="true"></div>
+                <header class="invoice-card__head">
+                    <div class="invoice-card__meta">
+                        <span class="invoice-card__eyebrow">Invoice</span>
+                        <span class="invoice-card__number">INV-2048</span>
+                    </div>
+                    <span class="invoice-card__badge invoice-card__badge--paid">Paid</span>
+                </header>
+                <div class="invoice-card__party">
+                    <span class="invoice-card__logo" aria-hidden="true"></span>
+                    <div class="invoice-card__party-text">
+                        <span class="invoice-card__company">Acme Studio Ltd</span>
+                        <span class="invoice-card__hint">Victoria Island · NGN</span>
+                    </div>
+                </div>
+                <div class="invoice-card__ledger">
+                    <div class="invoice-card__ledger-head">
+                        <span>Description</span>
+                        <span>Amount</span>
+                    </div>
+                    <div class="invoice-card__ledger-row">
+                        <span>Brand &amp; invoice template</span>
+                        <span>₦ 185,000</span>
+                    </div>
+                    <div class="invoice-card__ledger-row">
+                        <span>Compliance review</span>
+                        <span>₦ 92,500</span>
+                    </div>
+                    <div class="invoice-card__ledger-row invoice-card__ledger-row--accent">
+                        <span>VAT (7.5%)</span>
+                        <span>₦ 20,813</span>
+                    </div>
+                </div>
+                <div class="invoice-card__total-row">
+                    <span class="invoice-card__total-label">Total received</span>
+                    <span class="invoice-card__total-value">₦ 298,313.00</span>
+                </div>
+                <div class="invoice-card__footer">
+                    <span class="invoice-card__pill">NRS-ready</span>
+                    <span class="invoice-card__pill invoice-card__pill--ghost">PDF · Email</span>
+                    <span class="invoice-card__spark" aria-hidden="true"></span>
+                </div>
+            </article>
+            <?php endif; ?>
                 </div>
             </div>
-            <?php endif; ?>
         </div>
     </div>
 </section>
