@@ -99,6 +99,15 @@ a:hover {
     box-sizing: border-box;
 }
 
+/* Marketing pages: stronger side gutters so copy never hugs the viewport edge */
+body.layout-main .container {
+    width: 100%;
+    max-width: var(--container);
+    margin-inline: auto;
+    padding-left: max(clamp(1.35rem, 5vw, 2.75rem), env(safe-area-inset-left, 0px));
+    padding-right: max(clamp(1.35rem, 5vw, 2.75rem), env(safe-area-inset-right, 0px));
+}
+
 .narrow {
     max-width: 40rem;
 }
@@ -218,6 +227,18 @@ a:hover {
     margin-left: 0.5rem;
     padding-left: 1rem;
     border-left: 1px solid var(--color-border);
+}
+
+/* Match header CTAs to hero pill weight (same min height, shadow on primary) */
+.site-nav__cta .btn {
+    min-height: 2.75rem;
+    padding: 0.62rem 1.2rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+}
+
+.site-nav__cta .btn--primary {
+    box-shadow: 0 4px 14px rgba(22, 163, 74, 0.32);
 }
 
 .nav-toggle {
@@ -415,18 +436,26 @@ a:hover {
 
 .hero.hero--premium {
     position: relative;
-    min-height: clamp(38rem, 88vh, 52rem);
-    padding: clamp(4.5rem, 10vw, 7rem) 0 clamp(5rem, 12vw, 8.5rem);
+    /* Slightly shorter than full viewport so header + hero fit laptops without a tight scroll */
+    min-height: clamp(34rem, 78vh, 48rem);
+    padding: clamp(5.5rem, 11vw, 8rem) 0 clamp(6.5rem, 14vw, 10rem);
     display: flex;
     flex-direction: column;
     justify-content: center;
     max-width: 100%;
     overflow-x: hidden;
+    overflow-y: visible;
 }
 
 @supports (overflow: clip) {
     .hero.hero--premium {
         overflow-x: clip;
+    }
+}
+
+@supports (height: 100dvh) {
+    .hero.hero--premium {
+        min-height: clamp(34rem, 78dvh, 48rem);
     }
 }
 
@@ -463,14 +492,24 @@ a:hover {
 .hero__copy {
     min-width: 0;
     max-width: 100%;
+    /* Keep the text column at a comfortable reading measure on wide grids */
+    padding-right: clamp(0rem, 2vw, 1.5rem);
+}
+
+@media (min-width: 961px) {
+    .hero__copy {
+        max-width: min(36rem, 100%);
+    }
 }
 
 @media (max-width: 960px) {
     .hero.hero--premium {
         min-height: 0;
-        padding: clamp(3.25rem, 8vw, 5rem) 0 clamp(3.5rem, 10vw, 5.5rem);
-        padding-left: max(1rem, env(safe-area-inset-left));
-        padding-right: max(1rem, env(safe-area-inset-right));
+        padding: clamp(3.75rem, 9vw, 5.5rem) 0 clamp(4.25rem, 11vw, 6.5rem);
+    }
+    .hero__copy {
+        padding-right: 0;
+        max-width: 100%;
     }
     .hero__inner {
         grid-template-columns: 1fr;
@@ -501,6 +540,10 @@ a:hover {
     margin: 0 0 1rem;
 }
 
+.hero--premium .hero__copy > .eyebrow:first-child {
+    margin-top: 0.15rem;
+}
+
 .eyebrow--dark {
     color: var(--color-secondary);
 }
@@ -527,10 +570,11 @@ a:hover {
 }
 
 .hero__subtitle {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     color: var(--color-muted);
-    max-width: 36rem;
+    max-width: min(34rem, 100%);
     margin: 0 0 1.75rem;
+    line-height: 1.58;
 }
 
 .hero__actions {
@@ -551,16 +595,17 @@ a:hover {
     letter-spacing: 0.02em;
     color: var(--color-secondary);
     margin: 0 0 0.5rem;
-    max-width: 36rem;
+    max-width: min(34rem, 100%);
     line-height: 1.45;
 }
 
 .hero__note {
     font-size: 0.88rem;
     color: var(--color-muted);
-    margin: 0;
-    max-width: 36rem;
-    line-height: 1.5;
+    margin: 0 0 0.25rem;
+    max-width: min(34rem, 100%);
+    line-height: 1.55;
+    padding-bottom: 0.25rem;
 }
 
 .hero__visual {
@@ -588,6 +633,7 @@ a:hover {
     min-height: clamp(22rem, 48vh, 32rem);
     margin-inline: auto;
     padding-inline: clamp(0.75rem, 4vw, 1.75rem);
+    padding-bottom: clamp(1.25rem, 4vh, 2.5rem);
     box-sizing: border-box;
     display: flex;
     align-items: center;
@@ -3743,9 +3789,10 @@ select.input {
     margin-bottom: 0;
 }
 .hero__subtitle.landing-rich {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     color: var(--color-muted);
-    max-width: 36rem;
+    max-width: min(34rem, 100%);
+    line-height: 1.58;
 }
 .hero__frame--photo .hero__photo {
     width: 100%;
