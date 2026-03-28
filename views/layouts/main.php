@@ -9,7 +9,7 @@ $metaDescription = $brandTagline !== ''
     ? $brandTagline
     : billo_landing(
         'hero_subtitle',
-        'NRS-aligned invoicing for Nigerian freelancers and businesses. Simple to use, built for compliance and growth.',
+        'Professional invoicing for Nigerian businesses—get paid faster with branded documents and room to grow into deeper compliance.',
     );
 ?>
 <!DOCTYPE html>
@@ -43,7 +43,7 @@ $metaDescription = $brandTagline !== ''
             <a class="site-nav__link" href="#faqs">FAQs</a>
             <div class="site-nav__cta">
                 <a class="btn btn--ghost" href="<?= billo_e(billo_url('/login')) ?>">Log in</a>
-                <a class="btn btn--primary" href="<?= billo_e(billo_url('/signup')) ?>">Get started</a>
+                <a class="btn btn--primary" href="<?= billo_e(billo_url('/signup')) ?>"><?= billo_e(billo_landing('pricing_cta_label', 'Start free')) ?></a>
             </div>
         </nav>
     </div>

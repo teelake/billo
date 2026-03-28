@@ -16,7 +16,7 @@ $landing_testimonials = $landing_testimonials ?? [];
 $heroImg = trim(billo_landing('hero_image_url', ''));
 $heroImgOk = $heroImg !== '' && (str_starts_with($heroImg, 'https://') || str_starts_with($heroImg, 'http://') || str_starts_with($heroImg, '/'));
 
-$title = billo_landing('meta_title', 'billo — NRS-compliant invoice software for Nigeria');
+$title = billo_landing('meta_title', 'billo — Invoicing built for Nigerian teams, ready for what’s next');
 ob_start();
 ?>
 <section class="hero hero--premium">
@@ -28,12 +28,13 @@ ob_start();
                 <span class="text-gradient"><?= billo_e(billo_landing('hero_title_line1', 'NRS-compliant')) ?></span>
                 <?= billo_e(billo_landing('hero_title_line2', 'invoice software')) ?>
             </h1>
-            <div class="hero__subtitle landing-rich"><?= billo_landing_html('hero_subtitle', '<p>Create compliant invoices, get paid faster, and give your brand a premium edge—whether you’re a solo freelancer or a growing company.</p>') ?></div>
+            <div class="hero__subtitle landing-rich"><?= billo_landing_html('hero_subtitle', '<p>Turn quotes into paid invoices faster—branded PDFs, multi-currency totals, and a clear path to Nigeria-aligned (NRS) workflows when your operations mature. Built for freelancers, retailers, and finance-led teams.</p>') ?></div>
             <div class="hero__actions">
-                <a class="btn btn--primary btn--lg" href="<?= billo_e(billo_url('/signup')) ?>">Start free</a>
-                <a class="btn btn--secondary btn--lg" href="<?= billo_e(billo_url('/login')) ?>">Log in</a>
+                <a class="btn btn--primary btn--lg" href="<?= billo_e(billo_url('/signup')) ?>"><?= billo_e(billo_landing('hero_cta_primary', 'Start free')) ?></a>
+                <a class="btn btn--secondary btn--lg" href="<?= billo_e(billo_url('/login')) ?>"><?= billo_e(billo_landing('hero_cta_secondary', 'Log in')) ?></a>
             </div>
-            <p class="hero__note"><?= billo_e(billo_landing('hero_note', 'Finish setup after you sign up—get working in minutes.')) ?></p>
+            <p class="hero__trust" role="status"><?= billo_e(billo_landing('hero_trust', 'Free to start · No credit card to explore · Each organization’s data stays isolated')) ?></p>
+            <p class="hero__note"><?= billo_e(billo_landing('hero_note', 'Most teams issue their first invoice the same day they sign up.')) ?></p>
         </div>
         <div class="hero__visual">
             <div class="hero__scene"<?= $heroImgOk ? '' : ' aria-hidden="true"' ?>>
@@ -85,7 +86,7 @@ ob_start();
                 </div>
                 <div class="hero__frame<?= $heroImgOk ? ' hero__frame--photo' : '' ?>">
             <?php if ($heroImgOk): ?>
-                <img class="hero__photo" src="<?= billo_e($heroImg) ?>" alt="<?= billo_e(billo_landing('hero_image_alt', billo_brand_name() . ' — product preview')) ?>" width="560" height="420" loading="lazy" decoding="async">
+                <img class="hero__photo" src="<?= billo_e($heroImg) ?>" alt="<?= billo_e(billo_landing('hero_image_alt', billo_brand_name() . ' — product preview')) ?>" width="560" height="420" fetchpriority="high" loading="eager" decoding="async">
             <?php else: ?>
             <article class="invoice-card invoice-card--hero">
                 <div class="invoice-card__sheen" aria-hidden="true"></div>
@@ -141,8 +142,8 @@ ob_start();
 <section id="features" class="section">
     <div class="container">
         <header class="section__header">
-            <h2 class="section__title"><?= billo_e(billo_landing('features_title', 'Everything you need to bill with confidence')) ?></h2>
-            <div class="section__lead landing-rich"><?= billo_landing_html('features_lead', '<p>Clean URLs, multi-currency, branded templates—and room to grow into deeper compliance workflows.</p>') ?></div>
+            <h2 class="section__title"><?= billo_e(billo_landing('features_title', 'Ship invoices that look serious—and get paid')) ?></h2>
+            <div class="section__lead landing-rich"><?= billo_landing_html('features_lead', '<p>One place for clients, line items, taxes, and delivery. Fewer errors, faster follow-ups, and documents your customers actually trust.</p>') ?></div>
         </header>
         <div class="feature-grid">
             <article class="feature-card">
@@ -174,18 +175,18 @@ ob_start();
         <div>
             <h2 class="section__title"><?= billo_e(billo_landing('compliance_title', 'Compliance-first, optional by design')) ?></h2>
             <div class="section__lead landing-rich">
-                <?= billo_landing_html('compliance_lead', '<p>billo is positioned for NRS-aligned invoicing. Not everyone needs full tax mode on day one—toggle what applies when your business is ready.</p>') ?>
+                <?= billo_landing_html('compliance_lead', '<p>Start simple, tighten controls when you need them. billo is built around Nigeria-facing invoicing and a roadmap toward deeper NRS-aligned workflows—without forcing complexity on day one.</p>') ?>
             </div>
             <ul class="checklist">
-                <li><?= billo_e(billo_landing('compliance_li1', 'Nigeria-focused workflows and copy')) ?></li>
-                <li><?= billo_e(billo_landing('compliance_li2', 'Integration-ready architecture for e-filing partners')) ?></li>
-                <li><?= billo_e(billo_landing('compliance_li3', 'Tenant-isolated data by organization')) ?></li>
+                <li><?= billo_e(billo_landing('compliance_li1', 'NGN-first defaults with room for international work')) ?></li>
+                <li><?= billo_e(billo_landing('compliance_li2', 'Architecture that can grow with e-invoicing partners')) ?></li>
+                <li><?= billo_e(billo_landing('compliance_li3', 'Hard separation of data between organizations')) ?></li>
             </ul>
         </div>
         <div class="callout-card">
             <p class="callout-card__label"><?= billo_e(billo_landing('callout_label', 'Trust layer')) ?></p>
             <div class="callout-card__text landing-rich">
-                <?= billo_landing_html('callout_text', '<p>Deep blue for stability, green for growth—UI crafted for outdoor screens and busy shops, not just boardrooms.</p>') ?>
+                <?= billo_landing_html('callout_text', '<p>Readable in sunlight, calm under pressure—so owners and accountants can move quickly without second-guessing the interface.</p>') ?>
             </div>
         </div>
     </div>
@@ -195,7 +196,7 @@ ob_start();
     <div class="container">
         <header class="section__header">
             <h2 class="section__title"><?= billo_e(billo_landing('pricing_title', 'Pricing that scales with you')) ?></h2>
-            <div class="section__lead landing-rich"><?= billo_landing_html('pricing_lead', '<p>Plans, limits, and your payment provider are configured from the platform—so you always ship the right offer.</p>') ?></div>
+            <div class="section__lead landing-rich"><?= billo_landing_html('pricing_lead', '<p>Pick a plan that matches invoice volume and seats—upgrade when you outgrow the basics. Transparent limits, no surprises at the door.</p>') ?></div>
         </header>
         <?php if (count($landing_plans) > 0): ?>
             <div class="plan-grid plan-grid--marketing">
@@ -225,7 +226,7 @@ ob_start();
                                 <?php endforeach; ?>
                             </ul>
                         <?php endif; ?>
-                        <a class="btn btn--primary btn--block" href="<?= billo_e(billo_url('/signup')) ?>">Get started</a>
+                        <a class="btn btn--primary btn--block" href="<?= billo_e(billo_url('/signup')) ?>"><?= billo_e(billo_landing('pricing_cta_label', 'Start free')) ?></a>
                     </article>
                 <?php endforeach; ?>
             </div>
@@ -233,8 +234,8 @@ ob_start();
             <div class="narrow">
                 <div class="pricing-card">
                     <h3 class="pricing-card__title"><?= billo_e(billo_landing('pricing_card_title', 'Launch offers')) ?></h3>
-                    <div class="pricing-card__text landing-rich"><?= billo_landing_html('pricing_card_text', '<p>Free tier and paid plans with invoice volume, seats, and storage limits—announced when you open the waitlist.</p>') ?></div>
-                    <a class="btn btn--primary" href="<?= billo_e(billo_url('/signup')) ?>">Create your organization</a>
+                    <div class="pricing-card__text landing-rich"><?= billo_landing_html('pricing_card_text', '<p>Start on the free tier, then step up as volume and team size grow. Plans, limits, and checkout are managed centrally so you always see what’s live.</p>') ?></div>
+                    <a class="btn btn--primary" href="<?= billo_e(billo_url('/signup')) ?>"><?= billo_e(billo_landing('pricing_cta_label', 'Start free')) ?></a>
                 </div>
             </div>
         <?php endif; ?>
@@ -329,10 +330,10 @@ ob_start();
 <section class="section section--cta">
     <div class="container cta-banner">
         <div>
-            <h2 class="cta-banner__title"><?= billo_e(billo_landing('cta_title', 'Ready for premium invoicing?')) ?></h2>
-            <div class="cta-banner__text landing-rich"><?= billo_landing_html('cta_text', '<p>Sign up in seconds. Finish company details when you’re inside.</p>') ?></div>
+            <h2 class="cta-banner__title"><?= billo_e(billo_landing('cta_title', 'Ready to get paid with less friction?')) ?></h2>
+            <div class="cta-banner__text landing-rich"><?= billo_landing_html('cta_text', '<p>Create your workspace, add your business details, and send a professional invoice in minutes—not days.</p>') ?></div>
         </div>
-        <a class="btn btn--on-dark btn--lg" href="<?= billo_e(billo_url('/signup')) ?>">Get started</a>
+        <a class="btn btn--on-dark btn--lg" href="<?= billo_e(billo_url('/signup')) ?>"><?= billo_e(billo_landing('cta_button_label', 'Create your workspace')) ?></a>
     </div>
 </section>
 <?php
