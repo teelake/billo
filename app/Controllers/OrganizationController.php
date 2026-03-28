@@ -100,7 +100,13 @@ final class OrganizationController extends Controller
             OrganizationLogoService::removeBrandingFiles($orgId);
         }
 
-        $payload = $this->validatedPayload($orgId, $logoUploadPath, $removeLogo);
+        $orgRow = $this->organizations->findById($orgId);
+        if ($orgRow === null) {
+            Session::flash('error', 'Organization not found.');
+            $this->redirect('/dashboard');
+        }
+
+        $payload = $this->validatedPayload($orgId, $logoUploadPath, $removeLogo, $orgRow);
         if (is_string($payload)) {
             Session::flash('error', $payload);
             $this->redirect('/organization');
@@ -210,7 +216,10 @@ final class OrganizationController extends Controller
      *   invoice_brand_accent:string
      * }|string
      */
-    private function validatedPayload(int $organizationId, ?string $logoUploadPath, bool $removeLogo): array|string
+    /**
+     * @param array<string, mixed> $existingOrg
+     */
+    private function validatedPayload(int $organizationId, ?string $logoUploadPath, bool $removeLogo, array $existingOrg): array|string
     {
         $legal = $this->trimOrNull($this->request->input('legal_name', ''), 200);
         $l1 = $this->trimOrNull($this->request->input('billing_address_line1', ''), 255);
@@ -237,17 +246,11 @@ final class OrganizationController extends Controller
         } elseif ($logoUploadPath !== null) {
             $logo = $logoUploadPath;
         } else {
-            $logo = $this->trimOrNull($this->request->input('invoice_logo_url', ''), 500);
+            $logo = $this->trimOrNull((string) ($existingOrg['invoice_logo_url'] ?? ''), 500);
         }
 
-        if ($logo !== null) {
-            if (str_starts_with($logo, 'https://')) {
-                // ok
-            } elseif (str_starts_with($logo, 'http://')) {
-                return 'Logo URL must use https:// for remote images.';
-            } elseif ($logo !== '' && str_contains($logo, '://')) {
-                return 'Logo must be a full https URL or a project-relative path (no scheme).';
-            }
+        if ($logo !== null && $logo !== '' && str_contains($logo, '://') && !str_starts_with($logo, 'https://')) {
+            return 'External logo links must use https://.';
         }
 
         if ($taxNorm !== null) {

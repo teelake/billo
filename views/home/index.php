@@ -13,8 +13,9 @@ $landing_faqs = $landing_faqs ?? [];
 $landing_logos = $landing_logos ?? [];
 $landing_testimonials = $landing_testimonials ?? [];
 
-$heroImg = trim(billo_landing('hero_image_url', ''));
-$heroImgOk = $heroImg !== '' && (str_starts_with($heroImg, 'https://') || str_starts_with($heroImg, 'http://') || str_starts_with($heroImg, '/'));
+$heroRef = trim(billo_landing('hero_image_url', ''));
+$heroImg = billo_resolve_public_image_src($heroRef);
+$heroImgOk = $heroImg !== '';
 
 $title = billo_landing('meta_title', 'billo — Invoicing built for Nigerian teams, ready for what’s next');
 ob_start();
@@ -251,7 +252,8 @@ ob_start();
         <ul class="trusted-strip" role="list">
             <?php foreach ($landing_logos as $logo): ?>
                 <?php
-                $src = trim((string) ($logo['image_url'] ?? ''));
+                $srcRaw = trim((string) ($logo['image_url'] ?? ''));
+                $src = billo_resolve_public_image_src($srcRaw);
                 $name = (string) ($logo['name'] ?? '');
                 $href = trim((string) ($logo['website_url'] ?? ''));
                 if ($src === '') {
@@ -288,10 +290,10 @@ ob_start();
                 $quote = (string) ($t['quote_html'] ?? '');
                 $aname = (string) ($t['author_name'] ?? '');
                 $adet = trim((string) ($t['author_detail'] ?? ''));
-                $pic = trim((string) ($t['portrait_url'] ?? ''));
+                $pic = billo_resolve_public_image_src(trim((string) ($t['portrait_url'] ?? '')));
                 ?>
                 <blockquote class="testimonial-card">
-                    <?php if ($pic !== '' && (str_starts_with($pic, 'http') || str_starts_with($pic, '/'))): ?>
+                    <?php if ($pic !== ''): ?>
                         <img class="testimonial-card__avatar" src="<?= billo_e($pic) ?>" alt="" width="56" height="56" loading="lazy">
                     <?php endif; ?>
                     <div class="testimonial-card__quote landing-rich"><?= billo_sanitize_landing_html($quote) ?></div>

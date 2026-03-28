@@ -135,20 +135,22 @@ ob_start();
                             <p class="org-settings-panel__lead">Logo and footer text for PDFs, print, and emails.</p>
                 <div class="field org-logo-field">
                     <span class="label">Invoice logo</span>
+                    <p class="hint" style="margin-top:0">Upload a file (no URL). Max <strong>1 MB</strong>. JPG, PNG, GIF, or WebP — scaled to max 1200px long edge, high-quality JPEG or PNG.</p>
                     <div class="org-logo-preview-wrap" id="org-logo-preview-wrap"<?= $hasStoredLogo ? '' : ' hidden' ?>>
                         <img class="org-logo-preview-wrap__img" id="org-logo-preview-img" src="<?= $hasStoredLogo ? billo_e((string) $logoDisplayUrl) : '' ?>" alt="Logo preview" width="200" height="80" loading="lazy" decoding="async">
                     </div>
-                    <label class="label" for="logo_upload">Upload image</label>
-                    <input class="input" type="file" id="logo_upload" name="logo_upload" accept="image/jpeg,image/png,image/gif,image/webp">
-                    <p class="hint">Max <strong>1 MB</strong>. JPG, PNG, GIF, or WebP. Large images are scaled (long edge up to 1200 px) and re-encoded at high quality (JPEG 92% or PNG compression) to save space.</p>
-                    <label class="org-logo-remove">
-                        <input type="checkbox" name="remove_logo" value="1"> Remove logo (uploaded or URL)
-                    </label>
-                </div>
-                <div class="field">
-                    <label class="label" for="invoice_logo_url">Or logo URL / path</label>
-                    <input class="input" id="invoice_logo_url" name="invoice_logo_url" maxlength="500" value="<?= billo_e($val('invoice_logo_url')) ?>" placeholder="https://… (optional if you upload)">
-                    <p class="hint">Use an <strong>https</strong> URL, or leave blank when using an uploaded file.</p>
+                    <label class="btn btn--secondary" for="logo_upload" style="margin-top:0.5rem;display:inline-flex">Choose image</label>
+                    <input class="sr-only" type="file" id="logo_upload" name="logo_upload" accept="image/jpeg,image/png,image/gif,image/webp">
+                    <div class="field-toggle" style="margin-top:1rem">
+                        <div class="field-toggle__text">
+                            <strong class="field-toggle__label">Remove logo</strong>
+                            <p class="hint" style="margin:0.35rem 0 0">Clears the logo from invoices. You can upload a new file anytime.</p>
+                        </div>
+                        <label class="field-toggle__control">
+                            <input type="checkbox" name="remove_logo" value="1" class="field-toggle__input" id="remove_logo_toggle">
+                            <span class="field-toggle__track" aria-hidden="true"><span class="field-toggle__thumb"></span></span>
+                        </label>
+                    </div>
                 </div>
                 <div class="field">
                     <label class="label" for="invoice_footer">Invoice footer</label>

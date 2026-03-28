@@ -11,6 +11,7 @@ use App\Core\Session;
 use App\Core\View;
 use App\Repositories\LandingPageRepository;
 use App\Repositories\PlatformSettingsRepository;
+use App\Services\LandingImageService;
 use App\Services\PlatformSettings;
 
 final class PlatformLandingController extends Controller
@@ -40,7 +41,6 @@ final class PlatformLandingController extends Controller
         'landing.cta_title',
         'landing.footer_tagline',
         'landing.meta_title',
-        'landing.hero_image_url',
         'landing.hero_image_alt',
         'landing.faqs_section_title',
         'landing.trusted_section_title',
@@ -78,10 +78,16 @@ final class PlatformLandingController extends Controller
             $short = substr($key, strlen('landing.'));
             $values[$short] = billo_landing($short, '');
         }
+        $values['hero_image_url'] = billo_landing('hero_image_url', '');
+
+        $copyKeysForm = array_values(array_filter(
+            self::COPY_KEYS,
+            static fn (string $k): bool => $k !== 'landing.hero_image_url'
+        ));
 
         View::render('platform/landing', [
             'values' => $values,
-            'copy_keys' => self::COPY_KEYS,
+            'copy_keys' => $copyKeysForm,
             'quill_keys' => self::QUILL_KEYS,
             'faqs' => $this->landingBlocks->listFaqsAdmin(),
             'trusted_logos' => $this->landingBlocks->listTrustedLogosAdmin(),
@@ -109,6 +115,35 @@ final class PlatformLandingController extends Controller
             $this->settings->upsert($key, $val !== '' ? $val : null);
         }
 
+        $heroDir = LandingImageService::landingRoot() . DIRECTORY_SEPARATOR . 'hero';
+        $removeHero = isset($_POST['remove_hero_image']) && (string) $_POST['remove_hero_image'] === '1';
+        if ($removeHero) {
+            LandingImageService::removeDirContents($heroDir);
+            $this->settings->upsert('landing.hero_image_url', null);
+        } elseif (!empty($_FILES['hero_image_file']) && is_array($_FILES['hero_image_file'])) {
+            $fe = (int) ($_FILES['hero_image_file']['error'] ?? UPLOAD_ERR_NO_FILE);
+            if ($fe === UPLOAD_ERR_OK) {
+                if (!is_dir($heroDir) && !mkdir($heroDir, 0755, true) && !is_dir($heroDir)) {
+                    Session::flash('error', 'Could not create hero image folder.');
+                    $this->redirect('/platform/landing');
+                }
+                LandingImageService::removeDirContents($heroDir);
+                $r = LandingImageService::processAndSave(
+                    $_FILES['hero_image_file'],
+                    $heroDir . DIRECTORY_SEPARATOR . 'hero',
+                    LandingImageService::PROFILE_HERO
+                );
+                if (!($r['ok'] ?? false)) {
+                    Session::flash('error', $r['error'] ?? 'Hero image could not be processed.');
+                    $this->redirect('/platform/landing');
+                }
+                $this->settings->upsert('landing.hero_image_url', 'storage/landing/hero/hero.' . $r['ext']);
+            } elseif ($fe !== UPLOAD_ERR_NO_FILE) {
+                Session::flash('error', 'Hero image upload failed.');
+                $this->redirect('/platform/landing');
+            }
+        }
+
         foreach (self::QUILL_KEYS as $key) {
             $field = str_replace('.', '_', $key);
             $raw = $_POST[$field] ?? '';
@@ -131,13 +166,12 @@ final class PlatformLandingController extends Controller
 
         $questions = $this->request->postStringList('faq_question');
         $answers = $this->request->postStringList('faq_answer_html');
-        $active = $this->request->postStringList('faq_active');
         $rows = [];
         $n = max(count($questions), count($answers));
         for ($i = 0; $i < $n; $i++) {
             $q = isset($questions[$i]) ? trim($questions[$i]) : '';
             $a = isset($answers[$i]) ? billo_sanitize_landing_html($answers[$i]) : '';
-            $on = isset($active[$i]) && $active[$i] === '1';
+            $on = isset($_POST['faq_visible_' . $i]) && (string) $_POST['faq_visible_' . $i] === '1';
             $rows[] = ['question' => $q, 'answer_html' => $a, 'is_active' => $on];
         }
         $this->landingBlocks->replaceFaqs($rows);
@@ -154,20 +188,86 @@ final class PlatformLandingController extends Controller
         }
 
         $names = $this->request->postStringList('trusted_name');
-        $images = $this->request->postStringList('trusted_image_url');
+        $existing = $this->request->postStringList('trusted_image_existing');
         $webs = $this->request->postStringList('trusted_website_url');
-        $active = $this->request->postStringList('trusted_active');
+        $files = LandingImageService::normalizeFilesList('trusted_image_file');
+        $n = max(count($names), count($existing), count($webs), count($files));
+
+        $dir = LandingImageService::landingRoot() . DIRECTORY_SEPARATOR . 'trusted';
+        $backup = LandingImageService::landingRoot() . DIRECTORY_SEPARATOR . '_bak_trusted_' . uniqid('', true);
+        $hadDir = is_dir($dir);
+        if ($hadDir && !@rename($dir, $backup)) {
+            Session::flash('error', 'Could not stage trusted logo folder.');
+            $this->redirect('/platform/landing#landing-trusted');
+        }
+        if (!mkdir($dir, 0755, true) && !is_dir($dir)) {
+            if ($hadDir && is_dir($backup)) {
+                @rename($backup, $dir);
+            }
+            Session::flash('error', 'Could not create trusted logo folder.');
+            $this->redirect('/platform/landing#landing-trusted');
+        }
+
         $rows = [];
-        $n = max(count($names), count($images));
         for ($i = 0; $i < $n; $i++) {
+            $name = isset($names[$i]) ? trim($names[$i]) : '';
+            $web = isset($webs[$i]) ? trim($webs[$i]) : '';
+            $on = isset($_POST['trusted_visible_' . $i]) && (string) $_POST['trusted_visible_' . $i] === '1';
+            $imgPath = '';
+
+            $f = $files[$i] ?? null;
+            if ($f !== null && ($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+                if (($f['error'] ?? 0) !== UPLOAD_ERR_OK) {
+                    $this->restoreLandingDir($dir, $backup, $hadDir);
+                    Session::flash('error', 'A trusted logo upload failed (row ' . ($i + 1) . ').');
+                    $this->redirect('/platform/landing#landing-trusted');
+                }
+                $r = LandingImageService::processAndSave($f, $dir . DIRECTORY_SEPARATOR . (string) $i, LandingImageService::PROFILE_TRUSTED);
+                if (!($r['ok'] ?? false)) {
+                    $this->restoreLandingDir($dir, $backup, $hadDir);
+                    Session::flash('error', $r['error'] ?? 'Could not process a logo.');
+                    $this->redirect('/platform/landing#landing-trusted');
+                }
+                $imgPath = 'storage/landing/trusted/' . $i . '.' . $r['ext'];
+            } else {
+                $ex = isset($existing[$i]) ? trim($existing[$i]) : '';
+                if ($ex !== '' && (str_starts_with($ex, 'http://') || str_starts_with($ex, 'https://'))) {
+                    $imgPath = $ex;
+                } elseif ($ex !== '' && LandingImageService::isSafeStoredPath($ex, 'trusted')) {
+                    $base = basename(str_replace('\\', '/', $ex));
+                    $srcInBackup = $backup . DIRECTORY_SEPARATOR . $base;
+                    if ($hadDir && is_file($srcInBackup)) {
+                        $ext = pathinfo($base, PATHINFO_EXTENSION);
+                        $dest = $dir . DIRECTORY_SEPARATOR . $i . '.' . $ext;
+                        if (@copy($srcInBackup, $dest)) {
+                            $imgPath = 'storage/landing/trusted/' . $i . '.' . $ext;
+                        }
+                    }
+                }
+            }
+
+            if ($imgPath === '') {
+                continue;
+            }
             $rows[] = [
-                'name' => isset($names[$i]) ? trim($names[$i]) : '',
-                'image_url' => isset($images[$i]) ? trim($images[$i]) : '',
-                'website_url' => isset($webs[$i]) ? trim($webs[$i]) : '',
-                'is_active' => isset($active[$i]) && $active[$i] === '1',
+                'name' => $name !== '' ? $name : 'Partner',
+                'image_url' => $imgPath,
+                'website_url' => $web,
+                'is_active' => $on,
             ];
         }
-        $this->landingBlocks->replaceTrustedLogos($rows);
+
+        try {
+            $this->landingBlocks->replaceTrustedLogos($rows);
+        } catch (\Throwable $e) {
+            $this->restoreLandingDir($dir, $backup, $hadDir);
+            throw $e;
+        }
+
+        if (is_dir($backup)) {
+            LandingImageService::deleteDir($backup);
+        }
+
         Session::flash('success', 'Trusted-by logos updated.');
         $this->redirect('/platform/landing#landing-trusted');
     }
@@ -183,22 +283,98 @@ final class PlatformLandingController extends Controller
         $quotes = $this->request->postStringList('testimonial_quote_html');
         $authors = $this->request->postStringList('testimonial_author_name');
         $details = $this->request->postStringList('testimonial_author_detail');
-        $portraits = $this->request->postStringList('testimonial_portrait_url');
-        $active = $this->request->postStringList('testimonial_active');
+        $existing = $this->request->postStringList('testimonial_portrait_existing');
+        $files = LandingImageService::normalizeFilesList('testimonial_portrait_file');
+        $n = max(count($quotes), count($authors), count($existing), count($files));
+
+        $dir = LandingImageService::landingRoot() . DIRECTORY_SEPARATOR . 'portraits';
+        $backup = LandingImageService::landingRoot() . DIRECTORY_SEPARATOR . '_bak_portraits_' . uniqid('', true);
+        $hadDir = is_dir($dir);
+        if ($hadDir && !@rename($dir, $backup)) {
+            Session::flash('error', 'Could not stage portrait folder.');
+            $this->redirect('/platform/landing#landing-testimonials');
+        }
+        if (!mkdir($dir, 0755, true) && !is_dir($dir)) {
+            if ($hadDir && is_dir($backup)) {
+                @rename($backup, $dir);
+            }
+            Session::flash('error', 'Could not create portrait folder.');
+            $this->redirect('/platform/landing#landing-testimonials');
+        }
+
         $rows = [];
-        $n = max(count($quotes), count($authors));
         for ($i = 0; $i < $n; $i++) {
+            $quote = isset($quotes[$i]) ? billo_sanitize_landing_html($quotes[$i]) : '';
+            $author = isset($authors[$i]) ? trim($authors[$i]) : '';
+            $detail = isset($details[$i]) ? trim($details[$i]) : '';
+            $on = isset($_POST['testimonial_visible_' . $i]) && (string) $_POST['testimonial_visible_' . $i] === '1';
+            $picPath = '';
+
+            $f = $files[$i] ?? null;
+            if ($f !== null && ($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+                if (($f['error'] ?? 0) !== UPLOAD_ERR_OK) {
+                    $this->restoreLandingDir($dir, $backup, $hadDir);
+                    Session::flash('error', 'A portrait upload failed (row ' . ($i + 1) . ').');
+                    $this->redirect('/platform/landing#landing-testimonials');
+                }
+                $r = LandingImageService::processAndSave($f, $dir . DIRECTORY_SEPARATOR . (string) $i, LandingImageService::PROFILE_PORTRAIT);
+                if (!($r['ok'] ?? false)) {
+                    $this->restoreLandingDir($dir, $backup, $hadDir);
+                    Session::flash('error', $r['error'] ?? 'Could not process a portrait.');
+                    $this->redirect('/platform/landing#landing-testimonials');
+                }
+                $picPath = 'storage/landing/portraits/' . $i . '.' . $r['ext'];
+            } else {
+                $ex = isset($existing[$i]) ? trim($existing[$i]) : '';
+                if ($ex !== '' && (str_starts_with($ex, 'http://') || str_starts_with($ex, 'https://'))) {
+                    $picPath = $ex;
+                } elseif ($ex !== '' && LandingImageService::isSafeStoredPath($ex, 'portraits')) {
+                    $base = basename(str_replace('\\', '/', $ex));
+                    $srcInBackup = $backup . DIRECTORY_SEPARATOR . $base;
+                    if ($hadDir && is_file($srcInBackup)) {
+                        $ext = pathinfo($base, PATHINFO_EXTENSION);
+                        $dest = $dir . DIRECTORY_SEPARATOR . $i . '.' . $ext;
+                        if (@copy($srcInBackup, $dest)) {
+                            $picPath = 'storage/landing/portraits/' . $i . '.' . $ext;
+                        }
+                    }
+                }
+            }
+
+            $quotePlain = trim(preg_replace('/\s+/u', ' ', strip_tags($quote)));
+            if ($author === '' && $quotePlain === '') {
+                continue;
+            }
             $rows[] = [
-                'quote_html' => isset($quotes[$i]) ? billo_sanitize_landing_html($quotes[$i]) : '',
-                'author_name' => isset($authors[$i]) ? trim($authors[$i]) : '',
-                'author_detail' => isset($details[$i]) ? trim($details[$i]) : '',
-                'portrait_url' => isset($portraits[$i]) ? trim($portraits[$i]) : '',
-                'is_active' => isset($active[$i]) && $active[$i] === '1',
+                'quote_html' => $quote !== '' ? $quote : '<p></p>',
+                'author_name' => $author !== '' ? $author : 'Customer',
+                'author_detail' => $detail !== '' ? $detail : null,
+                'portrait_url' => $picPath,
+                'is_active' => $on,
             ];
         }
-        $this->landingBlocks->replaceTestimonials($rows);
+
+        try {
+            $this->landingBlocks->replaceTestimonials($rows);
+        } catch (\Throwable $e) {
+            $this->restoreLandingDir($dir, $backup, $hadDir);
+            throw $e;
+        }
+
+        if (is_dir($backup)) {
+            LandingImageService::deleteDir($backup);
+        }
+
         Session::flash('success', 'Testimonials updated.');
         $this->redirect('/platform/landing#landing-testimonials');
+    }
+
+    private function restoreLandingDir(string $dir, string $backup, bool $hadBackupSource): void
+    {
+        LandingImageService::deleteDir($dir);
+        if ($hadBackupSource && is_dir($backup)) {
+            @rename($backup, $dir);
+        }
     }
 
     private function requirePlatformAdmin(): void

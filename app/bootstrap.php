@@ -151,4 +151,8 @@ $router->get('/team', static fn () => (new TeamController($request))->index());
 $router->post('/team/invite', static fn () => (new TeamController($request))->invite());
 $router->post('/team/invites/revoke', static fn () => (new TeamController($request))->revokeInvite());
 
+if ($request->method === 'GET' && (new \App\Controllers\LandingMediaController())->tryServe($request->path)) {
+    exit;
+}
+
 $router->dispatch($request);

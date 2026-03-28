@@ -272,6 +272,43 @@ function billo_organization_bank_detail_lines(array $organization): array
     return $lines;
 }
 
+/**
+ * Public URL for an image stored under storage/landing/… (trusted, portraits, hero).
+ */
+function billo_landing_media_url(string $relative): string
+{
+    $relative = str_replace('\\', '/', trim($relative));
+    if ($relative === '' || str_contains($relative, '..')) {
+        return '';
+    }
+    if (preg_match('#^storage/landing/(trusted|portraits|hero)/[a-zA-Z0-9._-]+$#', $relative) !== 1) {
+        return '';
+    }
+    $rest = substr($relative, strlen('storage/landing/'));
+
+    return billo_url('/media/landing/' . $rest);
+}
+
+/**
+ * Resolve a landing or CMS image reference for <img src>: https URL, absolute path, or storage/landing/… .
+ */
+function billo_resolve_public_image_src(string $ref): string
+{
+    $ref = trim($ref);
+    if ($ref === '') {
+        return '';
+    }
+    if (str_starts_with($ref, 'https://') || str_starts_with($ref, 'http://')) {
+        return $ref;
+    }
+    if (str_starts_with($ref, '/')) {
+        return $ref;
+    }
+    $u = billo_landing_media_url($ref);
+
+    return $u !== '' ? $u : '';
+}
+
 function billo_organization_logo_display_url(?array $organization): ?string
 {
     if ($organization === null) {

@@ -16,6 +16,7 @@ use App\Core\Csrf;
 $error = $error ?? '';
 $success = $success ?? '';
 $title = 'Landing content — billo';
+$values = $values ?? [];
 
 $faqRows = $faqs ?? [];
 if ($faqRows === []) {
@@ -39,6 +40,9 @@ if ($testRows === []) {
         ['quote_html' => '', 'author_name' => '', 'author_detail' => '', 'portrait_url' => '', 'is_active' => 1],
     ];
 }
+
+$heroStored = trim((string) ($values['hero_image_url'] ?? ''));
+$heroPreviewUrl = billo_resolve_public_image_src($heroStored);
 
 ob_start();
 ?>
@@ -70,8 +74,27 @@ ob_start();
         </div>
 
         <div class="welcome-card landing-admin-panel is-active" data-landing-panel="copy" role="tabpanel">
-            <form method="post" action="<?= billo_e(billo_url('/platform/landing')) ?>" class="form form--spaced">
+            <form method="post" action="<?= billo_e(billo_url('/platform/landing')) ?>" class="form form--spaced" enctype="multipart/form-data">
                 <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
+                <div class="landing-media-card">
+                    <div class="landing-media-card__head">
+                        <div>
+                            <h2 class="landing-media-card__title">Hero image</h2>
+                            <p class="landing-media-card__hint">Optional full-width visual next to the headline. JPEG/PNG/WebP, up to 2.5&nbsp;MB. Resized to max 1680px long edge, high-quality recompression.</p>
+                        </div>
+                    </div>
+                    <div class="landing-upload-preview<?= $heroPreviewUrl !== '' ? ' has-image' : '' ?>" id="landing-hero-preview-wrap">
+                        <img src="<?= $heroPreviewUrl !== '' ? billo_e($heroPreviewUrl) : '' ?>" alt="" class="landing-upload-preview__img<?= $heroPreviewUrl === '' ? ' landing-upload-preview__img--hidden' : '' ?>" id="landing-hero-preview-img" width="560" height="315" loading="lazy">
+                        <span class="landing-upload-preview__placeholder<?= $heroPreviewUrl !== '' ? ' landing-upload-preview__placeholder--hidden' : '' ?>" id="landing-hero-preview-ph">No image selected</span>
+                    </div>
+                    <div class="landing-media-card__actions">
+                        <label class="btn btn--secondary" for="landing_hero_image_file">Choose file</label>
+                        <input class="sr-only" type="file" id="landing_hero_image_file" name="hero_image_file" accept="image/jpeg,image/png,image/gif,image/webp" data-landing-preview="landing-hero-preview-img" data-landing-preview-wrap="landing-hero-preview-wrap" data-landing-preview-ph="landing-hero-preview-ph">
+                        <label class="landing-checkbox-pill">
+                            <input type="checkbox" name="remove_hero_image" value="1"> Remove hero image
+                        </label>
+                    </div>
+                </div>
                 <?php foreach ($copy_keys as $fullKey): ?>
                     <?php
                     $short = substr($fullKey, strlen('landing.'));
@@ -109,10 +132,10 @@ ob_start();
         </div>
 
         <div class="welcome-card landing-admin-panel" data-landing-panel="faqs" role="tabpanel" hidden>
-            <p class="hint-banner" style="margin-bottom:1rem">Questions and answers shown on the public site. Empty rows are skipped when you save.</p>
+            <p class="landing-panel-lead">Questions and answers on the public site. Empty rows are skipped when you save.</p>
             <form method="post" action="<?= billo_e(billo_url('/platform/landing/faqs')) ?>" class="form form--spaced">
                 <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
-                <?php foreach ($faqRows as $row): ?>
+                <?php foreach ($faqRows as $fi => $row): ?>
                     <div class="landing-repeat-block">
                         <div class="field">
                             <label class="label">Question</label>
@@ -126,13 +149,14 @@ ob_start();
                                 <textarea class="input js-quill-input" id="<?= billo_e($fid) ?>" name="faq_answer_html[]" rows="3" hidden><?= billo_e((string) ($row['answer_html'] ?? '')) ?></textarea>
                             </div>
                         </div>
-                        <div class="field field--inline">
-                            <label class="label">Visible on site</label>
-                            <select class="input input--sm" name="faq_active[]">
-                                <?php $faqOn = (int) ($row['is_active'] ?? 1) === 1; ?>
-                                <option value="1"<?= $faqOn ? ' selected' : '' ?>>Yes</option>
-                                <option value="0"<?= !$faqOn ? ' selected' : '' ?>>No</option>
-                            </select>
+                        <div class="landing-toggle-row">
+                            <span class="landing-toggle-row__label">Visible on site</span>
+                            <?php $faqOn = (int) ($row['is_active'] ?? 1) === 1; ?>
+                            <input type="hidden" name="faq_visible_<?= (int) $fi ?>" value="0">
+                            <label class="field-toggle field-toggle--compact">
+                                <input type="checkbox" name="faq_visible_<?= (int) $fi ?>" value="1" class="field-toggle__input"<?= $faqOn ? ' checked' : '' ?>>
+                                <span class="field-toggle__track" aria-hidden="true"><span class="field-toggle__thumb"></span></span>
+                            </label>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -177,10 +201,15 @@ ob_start();
         </div>
 
         <div class="welcome-card landing-admin-panel" data-landing-panel="testimonials" role="tabpanel" hidden>
-            <form method="post" action="<?= billo_e(billo_url('/platform/landing/testimonials')) ?>" class="form form--spaced">
+            <p class="landing-panel-lead">Customer quotes with optional portrait. Images max 1&nbsp;MB; resized to max 384px for crisp avatars.</p>
+            <form method="post" action="<?= billo_e(billo_url('/platform/landing/testimonials')) ?>" class="form form--spaced" enctype="multipart/form-data">
                 <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
-                <?php foreach ($testRows as $row): ?>
-                    <div class="landing-repeat-block">
+                <?php foreach ($testRows as $ti => $row): ?>
+                    <?php
+                    $picRaw = trim((string) ($row['portrait_url'] ?? ''));
+                    $picPreview = billo_resolve_public_image_src($picRaw);
+                    ?>
+                    <div class="landing-repeat-block landing-repeat-block--media">
                         <div class="field">
                             <label class="label">Quote (rich text)</label>
                             <?php $tid = 'tq_' . bin2hex(random_bytes(4)); ?>
@@ -197,17 +226,24 @@ ob_start();
                             <label class="label">Role / company (optional)</label>
                             <input class="input" type="text" name="testimonial_author_detail[]" value="<?= billo_e((string) ($row['author_detail'] ?? '')) ?>">
                         </div>
+                        <input type="hidden" name="testimonial_portrait_existing[]" value="<?= billo_e($picRaw) ?>">
                         <div class="field">
-                            <label class="label">Portrait image URL (optional)</label>
-                            <input class="input" type="text" name="testimonial_portrait_url[]" value="<?= billo_e((string) ($row['portrait_url'] ?? '')) ?>">
+                            <span class="label">Portrait (optional)</span>
+                            <div class="landing-upload-preview landing-upload-preview--avatar<?= $picPreview !== '' ? ' has-image' : '' ?>" id="ts-wrap-<?= (int) $ti ?>">
+                                <img src="<?= $picPreview !== '' ? billo_e($picPreview) : '' ?>" alt="" class="landing-upload-preview__img<?= $picPreview === '' ? ' landing-upload-preview__img--hidden' : '' ?>" id="ts-img-<?= (int) $ti ?>" width="80" height="80" loading="lazy">
+                                <span class="landing-upload-preview__placeholder<?= $picPreview !== '' ? ' landing-upload-preview__placeholder--hidden' : '' ?>" id="ts-ph-<?= (int) $ti ?>">Optional</span>
+                            </div>
+                            <label class="btn btn--secondary btn--sm" for="ts-file-<?= (int) $ti ?>">Choose portrait</label>
+                            <input class="sr-only" type="file" id="ts-file-<?= (int) $ti ?>" name="testimonial_portrait_file[]" accept="image/jpeg,image/png,image/gif,image/webp" data-landing-preview="ts-img-<?= (int) $ti ?>" data-landing-preview-wrap="ts-wrap-<?= (int) $ti ?>" data-landing-preview-ph="ts-ph-<?= (int) $ti ?>">
                         </div>
-                        <div class="field field--inline">
-                            <label class="label">Visible</label>
-                            <select class="input input--sm" name="testimonial_active[]">
-                                <?php $tsOn = (int) ($row['is_active'] ?? 1) === 1; ?>
-                                <option value="1"<?= $tsOn ? ' selected' : '' ?>>Yes</option>
-                                <option value="0"<?= !$tsOn ? ' selected' : '' ?>>No</option>
-                            </select>
+                        <div class="landing-toggle-row">
+                            <span class="landing-toggle-row__label">Visible</span>
+                            <?php $tsOn = (int) ($row['is_active'] ?? 1) === 1; ?>
+                            <input type="hidden" name="testimonial_visible_<?= (int) $ti ?>" value="0">
+                            <label class="field-toggle field-toggle--compact">
+                                <input type="checkbox" name="testimonial_visible_<?= (int) $ti ?>" value="1" class="field-toggle__input"<?= $tsOn ? ' checked' : '' ?>>
+                                <span class="field-toggle__track" aria-hidden="true"><span class="field-toggle__thumb"></span></span>
+                            </label>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -282,6 +318,37 @@ $bodyClass = 'app-body';
   if (location.hash === '#landing-faqs') showTab('faqs');
   else if (location.hash === '#landing-trusted') showTab('trusted');
   else if (location.hash === '#landing-testimonials') showTab('testimonials');
+
+  var maxTrusted = 1048576;
+  var maxPortrait = 1048576;
+  var maxHero = 2621440;
+  document.querySelectorAll('input[type=file][data-landing-preview]').forEach(function (input) {
+    input.addEventListener('change', function () {
+      var imgId = input.getAttribute('data-landing-preview');
+      var wrapId = input.getAttribute('data-landing-preview-wrap');
+      var phId = input.getAttribute('data-landing-preview-ph');
+      var img = document.getElementById(imgId);
+      var wrap = document.getElementById(wrapId);
+      var ph = phId ? document.getElementById(phId) : null;
+      var f = input.files && input.files[0];
+      if (!img || !wrap) return;
+      var lim = input.name === 'hero_image_file' ? maxHero : (input.name.indexOf('portrait') !== -1 ? maxPortrait : maxTrusted);
+      if (!f) return;
+      if (f.size > lim) {
+        alert('File is too large for this field.');
+        input.value = '';
+        return;
+      }
+      var rd = new FileReader();
+      rd.onload = function () {
+        img.src = rd.result;
+        img.classList.remove('landing-upload-preview__img--hidden');
+        wrap.classList.add('has-image');
+        if (ph) ph.classList.add('landing-upload-preview__placeholder--hidden');
+      };
+      rd.readAsDataURL(f);
+    });
+  });
 })();
 </script>
 <script src="<?= billo_e(billo_asset('js/app.js')) ?>" defer></script>
