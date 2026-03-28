@@ -38,6 +38,9 @@ $metaDescription = $brandTagline !== ''
             <a class="site-nav__link" href="#features">Features</a>
             <a class="site-nav__link" href="#compliance">Compliance</a>
             <a class="site-nav__link" href="#pricing">Pricing</a>
+            <a class="site-nav__link" href="#trusted">Trusted by</a>
+            <a class="site-nav__link" href="#testimonials">Stories</a>
+            <a class="site-nav__link" href="#faqs">FAQs</a>
             <div class="site-nav__cta">
                 <a class="btn btn--ghost" href="<?= billo_e(billo_url('/login')) ?>">Log in</a>
                 <a class="btn btn--primary" href="<?= billo_e(billo_url('/signup')) ?>">Get started</a>
@@ -52,7 +55,7 @@ $metaDescription = $brandTagline !== ''
     <div class="container site-footer__inner">
         <div class="site-footer__brand">
             <span class="wordmark wordmark--footer">billo</span>
-            <p class="site-footer__tagline">Simple enough for a market trader. Strong enough for a CFO.</p>
+            <p class="site-footer__tagline"><?= billo_e(billo_landing('footer_tagline', 'Simple enough for a market trader. Strong enough for a CFO.')) ?></p>
         </div>
         <div class="site-footer__cols">
             <div>

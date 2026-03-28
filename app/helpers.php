@@ -104,6 +104,27 @@ function billo_landing_html(string $key, string $default = ''): string
     return billo_sanitize_landing_html(billo_landing($key, $default));
 }
 
+/** Price line for marketing cards (active subscription_plans rows). */
+function billo_format_plan_price_line(array $plan): string
+{
+    $amt = (float) ($plan['price_amount'] ?? 0);
+    $cur = strtoupper((string) ($plan['currency'] ?? 'NGN'));
+    $intv = (string) ($plan['billing_interval'] ?? 'monthly');
+    $prefix = $cur === 'NGN' ? '₦' : $cur . ' ';
+    if ($intv === 'lifetime' && $amt <= 0) {
+        return 'Free';
+    }
+    $decimals = abs($amt - round($amt)) < 0.001 ? 0 : 2;
+    $num = number_format($amt, $decimals);
+    $suffix = match ($intv) {
+        'monthly' => ' / month',
+        'yearly' => ' / year',
+        default => '',
+    };
+
+    return $prefix . $num . $suffix;
+}
+
 /** Session user email is listed in config platform.admin_emails (list of strings). */
 function billo_invoice_pay_links_available(): bool
 {

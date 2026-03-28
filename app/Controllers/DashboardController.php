@@ -27,21 +27,35 @@ final class DashboardController extends Controller
     public function index(): void
     {
         $ctx = $this->requireAuth();
-        $org = $this->organizations->findById($ctx['organization_id']);
         $user = $this->users->findById($ctx['user_id']);
         $emailVerified = $user !== null && !empty($user['email_verified_at']);
 
         $isPlatformOperator = billo_is_system_admin();
+        $operatorWithoutTenant = function_exists('billo_operator_without_tenant') && billo_operator_without_tenant();
         $platformSummary = $isPlatformOperator ? $this->platformAnalytics->summary() : null;
         $orgId = (int) $ctx['organization_id'];
-        $tenantSummary = in_array($ctx['role'], ['owner', 'admin'], true)
-            ? $this->tenantAnalytics->summary($orgId)
-            : null;
-        $invoiceStatusBreakdown = in_array($ctx['role'], ['owner', 'admin'], true)
-            ? $this->tenantAnalytics->invoiceStatusBreakdown($orgId)
-            : null;
-        $recentInvoices = $this->invoices->recentForOrganization($orgId, 8);
-        $canManageInvoices = in_array($ctx['role'], ['owner', 'admin', 'member'], true);
+
+        if ($operatorWithoutTenant) {
+            $org = null;
+            $tenantSummary = null;
+            $invoiceStatusBreakdown = null;
+            $recentInvoices = [];
+            $canManageInvoices = false;
+            $showTeamNav = false;
+            $canManageClients = false;
+        } else {
+            $org = $this->organizations->findById($orgId);
+            $tenantSummary = in_array($ctx['role'], ['owner', 'admin'], true)
+                ? $this->tenantAnalytics->summary($orgId)
+                : null;
+            $invoiceStatusBreakdown = in_array($ctx['role'], ['owner', 'admin'], true)
+                ? $this->tenantAnalytics->invoiceStatusBreakdown($orgId)
+                : null;
+            $recentInvoices = $this->invoices->recentForOrganization($orgId, 8);
+            $canManageInvoices = in_array($ctx['role'], ['owner', 'admin', 'member'], true);
+            $showTeamNav = in_array($ctx['role'], ['owner', 'admin'], true);
+            $canManageClients = in_array($ctx['role'], ['owner', 'admin', 'member'], true);
+        }
 
         View::render('dashboard/index', [
             'organization' => $org,
@@ -49,9 +63,10 @@ final class DashboardController extends Controller
             'user_name' => (string) Session::get('user_name', ''),
             'user_email' => (string) Session::get('user_email', ''),
             'email_verified' => $emailVerified,
-            'show_team_nav' => in_array($ctx['role'], ['owner', 'admin'], true),
-            'can_manage_clients' => in_array($ctx['role'], ['owner', 'admin', 'member'], true),
+            'show_team_nav' => $showTeamNav,
+            'can_manage_clients' => $canManageClients,
             'is_platform_operator' => $isPlatformOperator,
+            'operator_without_tenant' => $operatorWithoutTenant,
             'platform_summary' => $platformSummary,
             'tenant_summary' => $tenantSummary,
             'invoice_status_breakdown' => $invoiceStatusBreakdown,

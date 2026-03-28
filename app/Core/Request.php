@@ -36,4 +36,21 @@ final class Request
 
         return is_string($v) ? trim($v) : $default;
     }
+
+    /** @return list<string> */
+    public function postStringList(string $key): array
+    {
+        $v = $_POST[$key] ?? null;
+        if (!is_array($v)) {
+            return [];
+        }
+        $out = [];
+        foreach ($v as $item) {
+            if (is_string($item)) {
+                $out[] = $item;
+            }
+        }
+
+        return $out;
+    }
 }

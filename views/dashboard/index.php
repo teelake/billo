@@ -11,6 +11,7 @@ use App\Core\Csrf;
 /** @var bool $show_team_nav */
 /** @var bool $can_manage_clients */
 /** @var bool $is_platform_operator */
+/** @var bool $operator_without_tenant */
 /** @var array<string, mixed>|null $platform_summary */
 /** @var array<string, mixed>|null $tenant_summary */
 /** @var array<string, int>|null $invoice_status_breakdown */
@@ -21,6 +22,7 @@ use App\Core\Csrf;
 $can_manage_clients = !empty($can_manage_clients);
 $can_manage_invoices = !empty($can_manage_invoices);
 $is_platform_operator = !empty($is_platform_operator);
+$operator_without_tenant = !empty($operator_without_tenant);
 $platform_summary = is_array($platform_summary ?? null) ? $platform_summary : null;
 $tenant_summary = is_array($tenant_summary ?? null) ? $tenant_summary : null;
 $invoice_status_breakdown = is_array($invoice_status_breakdown ?? null) ? $invoice_status_breakdown : null;
@@ -55,7 +57,7 @@ ob_start();
             </div>
         <?php endif; ?>
 
-        <?php if ($is_platform_operator && $platform_summary !== null && function_exists('billo_app_nav_mode') && billo_app_nav_mode() === 'platform'): ?>
+        <?php if ($is_platform_operator && $platform_summary !== null && ($operator_without_tenant || (function_exists('billo_app_nav_mode') && billo_app_nav_mode() === 'platform'))): ?>
             <div class="platform-command">
                 <div class="platform-command__head">
                     <div>
@@ -92,24 +94,32 @@ ob_start();
 
         <div class="dashboard-hero">
             <div class="dashboard-hero__main">
-                <p class="eyebrow eyebrow--dark">Dashboard</p>
-                <h1 class="dashboard-hero__title">Hi <?= billo_e($greetName) ?>, here’s <?= billo_e($orgName) ?></h1>
+                <p class="eyebrow eyebrow--dark"><?= $operator_without_tenant ? 'Platform' : 'Dashboard' ?></p>
+                <h1 class="dashboard-hero__title">
+                    <?php if ($operator_without_tenant): ?>
+                        Hi <?= billo_e($greetName) ?>, you’re signed in as a platform operator
+                    <?php else: ?>
+                        Hi <?= billo_e($greetName) ?>, here’s <?= billo_e($orgName) ?>
+                    <?php endif; ?>
+                </h1>
                 <p class="dashboard-hero__meta">
                     Signed in as <?= billo_e($user_email) ?>
                     <span class="dashboard-hero__dot" aria-hidden="true">·</span>
                     <span class="capitalize"><?= billo_e($role) ?></span>
                 </p>
             </div>
-            <div class="dashboard-hero__actions">
-                <a class="btn btn--primary" href="<?= billo_e(billo_url('/invoices')) ?>">All invoices</a>
-                <a class="btn btn--secondary" href="<?= billo_e(billo_url('/clients')) ?>">Clients</a>
-                <?php if ($can_manage_clients): ?>
-                    <a class="btn btn--secondary" href="<?= billo_e(billo_url('/invoices/create')) ?>">New invoice</a>
-                <?php endif; ?>
-            </div>
+            <?php if (!$operator_without_tenant): ?>
+                <div class="dashboard-hero__actions">
+                    <a class="btn btn--primary" href="<?= billo_e(billo_url('/invoices')) ?>">All invoices</a>
+                    <a class="btn btn--secondary" href="<?= billo_e(billo_url('/clients')) ?>">Clients</a>
+                    <?php if ($can_manage_clients): ?>
+                        <a class="btn btn--secondary" href="<?= billo_e(billo_url('/invoices/create')) ?>">New invoice</a>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
         </div>
 
-        <?php if ($tenant_summary !== null): ?>
+        <?php if (!$operator_without_tenant && $tenant_summary !== null): ?>
             <div class="dashboard-pulse tenant-overview">
                 <div class="tenant-overview__head dashboard-pulse__head">
                     <div>
@@ -166,6 +176,7 @@ ob_start();
             </div>
         <?php endif; ?>
 
+        <?php if (!$operator_without_tenant): ?>
         <section class="dashboard-recent" aria-labelledby="recent-invoices-heading">
             <div class="dashboard-recent__head">
                 <div>
@@ -242,6 +253,7 @@ ob_start();
                 </div>
             <?php endif; ?>
         </section>
+        <?php endif; ?>
     </div>
 </section>
 <?php
