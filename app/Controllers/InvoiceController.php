@@ -161,8 +161,12 @@ final class InvoiceController extends Controller
                 'invoice',
                 null,
                 $documentTax,
+                $parsed['invoice_status'],
             );
         } catch (\InvalidArgumentException $e) {
+            Session::flash('error', $e->getMessage());
+            $this->redirect('/invoices/create');
+        } catch (\RuntimeException $e) {
             Session::flash('error', $e->getMessage());
             $this->redirect('/invoices/create');
         } catch (\Throwable $e) {
@@ -178,7 +182,7 @@ final class InvoiceController extends Controller
             $this->redirect('/invoices/create');
         }
 
-        Session::flash('success', 'Invoice saved as draft.');
+        $this->flashInvoiceSavedMessage($parsed['invoice_status'], true);
         $this->redirect('/invoices/show?id=' . $id);
     }
 
@@ -279,8 +283,12 @@ final class InvoiceController extends Controller
                 $parsed['notes'],
                 $parsed['lines'],
                 $documentTax,
+                $parsed['invoice_status'],
             );
         } catch (\InvalidArgumentException $e) {
+            Session::flash('error', $e->getMessage());
+            $this->redirect('/invoices/edit?id=' . $id);
+        } catch (\RuntimeException $e) {
             Session::flash('error', $e->getMessage());
             $this->redirect('/invoices/edit?id=' . $id);
         } catch (\Throwable $e) {
@@ -298,7 +306,7 @@ final class InvoiceController extends Controller
             $this->redirect('/invoices');
         }
 
-        Session::flash('success', 'Invoice updated.');
+        $this->flashInvoiceSavedMessage($parsed['invoice_status'], false);
         $this->redirect('/invoices/show?id=' . $id);
     }
 
@@ -588,9 +596,6 @@ final class InvoiceController extends Controller
         return (int) $idRaw;
     }
 
-    /**
-     * @return list<array<string, string>>
-     */
     /** @return list<array<string, string>> */
     private function defaultFormLinesNoTax(): array
     {
@@ -600,10 +605,9 @@ final class InvoiceController extends Controller
     }
 
     /**
-     * @return array{client_id:?int,issue_date:string,due_date:?string,currency:string,notes:?string,lines:list<array{description:string,quantity:float,unit_amount:float,tax_rate:float}>}|string
-     */
-    /**
      * @param array<string, mixed>|null $existingInvoice draft row when updating
+     *
+     * @return array{client_id:?int,issue_date:string,due_date:?string,currency:string,notes:?string,invoice_status:string,lines:list<array{description:string,quantity:float,unit_amount:float,tax_rate:float}>}|string
      */
     private function validatedInvoicePayload(int $organizationId, bool $isCreditNote, ?array $existingInvoice): array|string
     {
@@ -657,6 +661,15 @@ final class InvoiceController extends Controller
 
         $notes = $this->trimOrNull($this->request->input('notes', ''), 65535);
 
+        $statusRaw = strtolower(trim((string) ($this->request->input('invoice_status', 'draft') ?? 'draft')));
+        $allowedStatus = ['draft', 'sent', 'paid', 'void'];
+        if (!in_array($statusRaw, $allowedStatus, true)) {
+            $statusRaw = 'draft';
+        }
+        if (in_array($statusRaw, ['sent', 'paid'], true) && $clientId === null) {
+            return 'Select a client before marking this invoice as sent or paid.';
+        }
+
         $linesResult = $this->parsePostedLines($isCreditNote, $taxEnabled, $forceZeroLineTax);
         if (is_string($linesResult)) {
             return $linesResult;
@@ -668,8 +681,25 @@ final class InvoiceController extends Controller
             'due_date' => $dueDate,
             'currency' => $currency,
             'notes' => $notes,
+            'invoice_status' => $statusRaw,
             'lines' => $linesResult,
         ];
+    }
+
+    /** @param 'draft'|'sent'|'paid'|'void' $status */
+    private function flashInvoiceSavedMessage(string $status, bool $isNew): void
+    {
+        if ($status === 'sent') {
+            Session::flash('success', $isNew ? 'Invoice created and marked as sent.' : 'Invoice saved and marked as sent.');
+        } elseif ($status === 'paid') {
+            Session::flash('success', $isNew ? 'Invoice created and marked as paid.' : 'Invoice saved and marked as paid.');
+        } elseif ($status === 'void') {
+            Session::flash('success', 'Invoice voided.');
+        } elseif ($isNew) {
+            Session::flash('success', 'Invoice saved as draft.');
+        } else {
+            Session::flash('success', 'Invoice updated.');
+        }
     }
 
     /**

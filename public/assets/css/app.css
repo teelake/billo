@@ -1902,6 +1902,116 @@ select.input {
     font-size: 1.05rem;
 }
 
+/* Invoice create / edit — clearer hierarchy & spacing */
+.invoice-form-page__eyebrow {
+    margin: 0 0 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+}
+
+.invoice-form-page__head .page-head__title {
+    margin-top: 0;
+}
+
+.invoice-form-page__alert {
+    margin-bottom: 1rem;
+}
+
+.invoice-form-shell {
+    position: relative;
+    padding: clamp(1.35rem, 3vw, 2.25rem);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    background: linear-gradient(
+        155deg,
+        rgba(30, 58, 138, 0.07) 0%,
+        var(--color-surface) 38%,
+        var(--color-surface) 100%
+    );
+    box-shadow: var(--shadow-md);
+}
+
+.invoice-form-section {
+    margin-bottom: 1.75rem;
+}
+
+.invoice-form-section:last-of-type {
+    margin-bottom: 0;
+}
+
+.invoice-form-section__title {
+    margin: 0 0 1rem;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--color-ink);
+    letter-spacing: -0.02em;
+}
+
+.invoice-form-meta-grid {
+    display: grid;
+    gap: 1rem 1.25rem;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+    .invoice-form-meta-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .invoice-form-meta-grid__span-2 {
+        grid-column: span 2;
+    }
+}
+
+.invoice-form-hint {
+    margin-top: 0.35rem;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: var(--color-muted);
+}
+
+.invoice-form-hint a {
+    font-weight: 600;
+}
+
+.input--emphasis {
+    font-weight: 600;
+    color: var(--color-ink);
+}
+
+.invoice-form-notes {
+    min-height: 5.5rem;
+    resize: vertical;
+    line-height: 1.5;
+}
+
+.invoice-form-section.invoice-tax-inline {
+    padding: 1.1rem 1.35rem;
+    margin-bottom: 1.75rem;
+    border-radius: var(--radius-md);
+    background: rgba(15, 23, 42, 0.025);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+}
+
+.invoice-form-section.invoice-form-totals {
+    margin-top: 0.5rem;
+    padding: 1.15rem 1.35rem;
+    border-radius: var(--radius-md);
+    background: rgba(15, 23, 42, 0.04);
+    border: 1px solid var(--color-border);
+}
+
+.invoice-form-actions {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--color-border);
+}
+
 .org-settings-card {
     max-width: 44rem;
 }

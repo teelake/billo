@@ -119,6 +119,72 @@ final class InvoiceRepository
         return self::$invoicesHasCreditedInvoiceId;
     }
 
+    /**
+     * SQL fragment: restrict to standard invoices when invoice_kind exists; otherwise all rows match.
+     */
+    private static function sqlStandardInvoiceOnly(): string
+    {
+        return self::invoicesTableHasInvoiceKindColumn()
+            ? "invoice_kind = 'invoice'"
+            : '1=1';
+    }
+
+    /**
+     * Advance a row still in draft to sent, paid, or void (used after create/update from the form).
+     *
+     * @throws \InvalidArgumentException when sent/paid requires a client
+     */
+    private function applyInvoiceFormStatus(
+        \PDO $pdo,
+        int $invoiceId,
+        int $organizationId,
+        string $targetStatus,
+        ?int $clientId,
+    ): void {
+        $allowed = ['draft', 'sent', 'paid', 'void'];
+        if (!in_array($targetStatus, $allowed, true)) {
+            $targetStatus = 'draft';
+        }
+        if ($targetStatus === 'draft') {
+            return;
+        }
+        if (in_array($targetStatus, ['sent', 'paid'], true) && ($clientId === null || $clientId <= 0)) {
+            throw new \InvalidArgumentException('Select a client before marking this invoice as sent or paid.');
+        }
+
+        if ($targetStatus === 'sent') {
+            $stmt = $pdo->prepare(
+                'UPDATE invoices SET
+                    status = \'sent\',
+                    sent_at = COALESCE(sent_at, CURRENT_TIMESTAMP),
+                    paid_at = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                 WHERE id = :id AND organization_id = :organization_id AND status = \'draft\''
+            );
+        } elseif ($targetStatus === 'paid') {
+            $stmt = $pdo->prepare(
+                'UPDATE invoices SET
+                    status = \'paid\',
+                    sent_at = COALESCE(sent_at, CURRENT_TIMESTAMP),
+                    paid_at = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP
+                 WHERE id = :id AND organization_id = :organization_id AND status = \'draft\''
+            );
+        } else {
+            $stmt = $pdo->prepare(
+                'UPDATE invoices SET
+                    status = \'void\',
+                    updated_at = CURRENT_TIMESTAMP
+                 WHERE id = :id AND organization_id = :organization_id AND status = \'draft\''
+            );
+        }
+
+        $stmt->execute(['id' => $invoiceId, 'organization_id' => $organizationId]);
+        if ($stmt->rowCount() === 0) {
+            throw new \RuntimeException('Could not update invoice status.');
+        }
+    }
+
     /** @return list<array<string, mixed>> */
     public function listForOrganization(int $organizationId): array
     {
@@ -221,6 +287,7 @@ final class InvoiceRepository
      *   wht_id: ?int,
      *   wht_rate: float
      * }|null $documentTax document-level VAT/WHT (standard invoices only)
+     * @param 'draft'|'sent'|'paid'|'void' $targetStatus status after insert (draft = leave as draft)
      */
     public function create(
         int $organizationId,
@@ -233,6 +300,7 @@ final class InvoiceRepository
         string $invoiceKind = 'invoice',
         ?int $creditedInvoiceId = null,
         ?array $documentTax = null,
+        string $targetStatus = 'draft',
     ): int {
         $pdo = Database::pdo();
         $kind = $invoiceKind === 'credit_note' ? 'credit_note' : 'invoice';
@@ -549,8 +617,14 @@ final class InvoiceRepository
             }
             $invoiceId = (int) $pdo->lastInsertId();
             $this->insertLineItems($pdo, $invoiceId, $enriched);
+            $this->applyInvoiceFormStatus($pdo, $invoiceId, $organizationId, $targetStatus, $clientId);
 
             $pdo->commit();
+        } catch (\InvalidArgumentException $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
         } catch (PDOException $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
@@ -624,6 +698,7 @@ final class InvoiceRepository
      *   wht_id: ?int,
      *   wht_rate: float
      * }|null $documentTax used when invoice uses document tax computation
+     * @param 'draft'|'sent'|'paid'|'void' $targetStatus status after save (draft = leave as draft)
      */
     public function updateDraft(
         int $invoiceId,
@@ -635,16 +710,20 @@ final class InvoiceRepository
         ?string $notes,
         array $lines,
         ?array $documentTax = null,
+        string $targetStatus = 'draft',
     ): bool {
         $pdo = Database::pdo();
         $hasDocCols = self::invoicesTableHasDocumentTaxColumns();
+        $hasKind = self::invoicesTableHasInvoiceKindColumn();
+        $kindSql = $hasKind ? 'invoice_kind' : '\'invoice\' AS invoice_kind';
+        $taxSql = $hasDocCols
+            ? 'COALESCE(tax_computation, \'line\') AS tax_computation'
+            : '\'line\' AS tax_computation';
 
         try {
             $pdo->beginTransaction();
 
-            $checkSql = $hasDocCols
-                ? 'SELECT id, invoice_kind, COALESCE(tax_computation, \'line\') AS tax_computation FROM invoices WHERE id = :id AND organization_id = :organization_id AND status = \'draft\' LIMIT 1'
-                : 'SELECT id, \'invoice\' AS invoice_kind, \'line\' AS tax_computation FROM invoices WHERE id = :id AND organization_id = :organization_id AND status = \'draft\' LIMIT 1';
+            $checkSql = "SELECT id, {$kindSql}, {$taxSql} FROM invoices WHERE id = :id AND organization_id = :organization_id AND status = 'draft' LIMIT 1";
             $check = $pdo->prepare($checkSql);
             $check->execute(['id' => $invoiceId, 'organization_id' => $organizationId]);
             /** @var array<string, mixed>|false $row */
@@ -772,8 +851,14 @@ final class InvoiceRepository
             $pdo->prepare('DELETE FROM invoice_line_items WHERE invoice_id = :invoice_id')
                 ->execute(['invoice_id' => $invoiceId]);
             $this->insertLineItems($pdo, $invoiceId, $enriched);
+            $this->applyInvoiceFormStatus($pdo, $invoiceId, $organizationId, $targetStatus, $clientId);
 
             $pdo->commit();
+        } catch (\InvalidArgumentException $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
         } catch (PDOException $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
@@ -796,12 +881,13 @@ final class InvoiceRepository
 
     public function setGatewayPendingCheckout(int $invoiceId, int $organizationId, string $provider, string $checkoutRef): bool
     {
+        $kindPred = self::sqlStandardInvoiceOnly();
         $stmt = Database::pdo()->prepare(
-            'UPDATE invoices SET
+            "UPDATE invoices SET
                 payment_provider = :provider,
                 gateway_checkout_ref = :cref,
                 updated_at = CURRENT_TIMESTAMP
-             WHERE id = :id AND organization_id = :organization_id AND status = \'sent\' AND invoice_kind = \'invoice\''
+             WHERE id = :id AND organization_id = :organization_id AND status = 'sent' AND {$kindPred}"
         );
         $stmt->execute([
             'provider' => $provider,
@@ -819,8 +905,9 @@ final class InvoiceRepository
     public function findByGatewayCheckoutRef(string $checkoutRef): ?array
     {
         $np = self::invoicesTableHasNetPayableColumn() ? ', net_payable, tax_computation' : '';
+        $kindSel = self::invoicesTableHasInvoiceKindColumn() ? 'invoice_kind' : "'invoice' AS invoice_kind";
         $stmt = Database::pdo()->prepare(
-            "SELECT id, organization_id, status, invoice_kind, total{$np} FROM invoices
+            "SELECT id, organization_id, status, {$kindSel}, total{$np} FROM invoices
              WHERE gateway_checkout_ref = :cref LIMIT 1"
         );
         $stmt->execute(['cref' => $checkoutRef]);
@@ -835,6 +922,7 @@ final class InvoiceRepository
         if (self::invoicesTableHasNetPayableColumn()) {
             $amountPred = 'net_payable > 0';
         }
+        $kindPred = self::sqlStandardInvoiceOnly();
         $stmt = Database::pdo()->prepare(
             "UPDATE invoices SET
                 status = 'paid',
@@ -844,7 +932,7 @@ final class InvoiceRepository
                 updated_at = CURRENT_TIMESTAMP
              WHERE id = :id AND organization_id = :organization_id
                AND status = 'sent'
-               AND invoice_kind = 'invoice'
+               AND {$kindPred}
                AND {$amountPred}"
         );
         $stmt->execute([
@@ -875,14 +963,15 @@ final class InvoiceRepository
 
     public function markPaid(int $invoiceId, int $organizationId): bool
     {
+        $kindPred = self::sqlStandardInvoiceOnly();
         $stmt = Database::pdo()->prepare(
-            'UPDATE invoices SET
-                status = \'paid\',
+            "UPDATE invoices SET
+                status = 'paid',
                 paid_at = CURRENT_TIMESTAMP,
                 updated_at = CURRENT_TIMESTAMP
              WHERE id = :id AND organization_id = :organization_id
-               AND status = \'sent\'
-               AND invoice_kind = \'invoice\''
+               AND status = 'sent'
+               AND {$kindPred}"
         );
         $stmt->execute(['id' => $invoiceId, 'organization_id' => $organizationId]);
 

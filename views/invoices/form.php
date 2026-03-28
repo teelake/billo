@@ -89,6 +89,14 @@ $applyWhtChecked = $is_edit
 $vatRateForPreview = $platformVat;
 $whtSelected = $is_edit ? (int) ($invRow['wht_id'] ?? 0) : (int) ($orgTax['default_wht_id'] ?? 0);
 
+$statusVal = 'draft';
+if ($is_edit && isset($inv['status'])) {
+    $st = (string) $inv['status'];
+    if (in_array($st, ['draft', 'sent', 'paid', 'void'], true)) {
+        $statusVal = $st;
+    }
+}
+
 $title = ($is_credit_note ? 'Edit credit note' : ($is_edit ? 'Edit invoice' : 'New invoice')) . ' — billo';
 ob_start();
 ?>
@@ -97,76 +105,100 @@ ob_start();
     $active = 'invoices';
     include dirname(__DIR__) . '/partials/app_topbar.php';
     ?>
-    <div class="container app-dashboard__body">
-        <div class="page-head">
+    <div class="container app-dashboard__body invoice-form-page">
+        <div class="page-head invoice-form-page__head">
             <div>
+                <p class="invoice-form-page__eyebrow"><?= $is_credit_note ? 'Credit note' : 'Invoice' ?></p>
                 <h1 class="page-head__title"><?= $is_credit_note ? 'Edit credit note' : ($is_edit ? 'Edit invoice' : 'New invoice') ?></h1>
                 <p class="page-head__lead"><?php
                     if ($is_credit_note) {
-                        echo 'Credit notes use negative unit amounts for each line.';
-                        if ($creditedRef !== '') {
-                            echo ' Applies to invoice ' . billo_e($creditedRef) . '.';
-                        }
+                        echo 'Amounts are negative per line. Reference: ';
+                        echo $creditedRef !== '' ? billo_e($creditedRef) : 'original invoice.';
                     } elseif ($is_edit) {
-                        echo 'Update draft line items and details.';
+                        echo 'Adjust lines and details, then choose status when you save.';
                     } else {
-                        echo 'Create a draft—you can mark it sent once a client is set.';
+                        echo 'Fill in the essentials, add lines, and set status in one step—or stay on draft until you’re ready.';
                     }
                 ?></p>
             </div>
-            <a class="btn btn--secondary" href="<?= billo_e(billo_url($is_edit ? '/invoices/show?id=' . $invId : '/invoices')) ?>"><?= $is_edit ? 'Cancel' : 'Back' ?></a>
+            <a class="btn btn--secondary" href="<?= billo_e(billo_url($is_edit ? '/invoices/show?id=' . $invId : '/invoices')) ?>"><?= $is_edit ? 'Cancel' : 'Back to list' ?></a>
         </div>
 
         <?php if ($error !== ''): ?>
-            <div class="alert alert--error" role="alert" style="margin-bottom:1rem"><?= billo_e($error) ?></div>
+            <div class="alert alert--error invoice-form-page__alert" role="alert"><?= billo_e($error) ?></div>
         <?php endif; ?>
 
-        <div class="welcome-card invoice-form-card">
-            <form class="form form--spaced" method="post" action="<?= billo_e(billo_url($is_edit ? '/invoices/update' : '/invoices')) ?>">
+        <div class="invoice-form-shell welcome-card">
+            <form class="form form--spaced invoice-form" method="post" action="<?= billo_e(billo_url($is_edit ? '/invoices/update' : '/invoices')) ?>" data-invoice-form>
                 <input type="hidden" name="_csrf" value="<?= billo_e(Csrf::token()) ?>">
                 <?php if ($is_edit): ?>
                     <input type="hidden" name="id" value="<?= $invId ?>">
                 <?php endif; ?>
 
-                <div class="field-grid">
-                    <div class="field billo-combobox" data-billo-client-combobox>
-                        <label class="label" for="invoice_client_search">Client</label>
-                        <input type="hidden" name="client_id" id="client_id" value="<?= billo_e($clientIdVal) ?>">
-                        <input class="input billo-combobox__search" type="search" id="invoice_client_search" autocomplete="off" placeholder="Search by name or email…" value="<?= billo_e($selectedClientLabel) ?>">
-                        <ul class="billo-combobox__list" id="invoice-client-suggestions" role="listbox" hidden></ul>
-                        <p class="hint">Optional for drafts. Type to filter; click a row to select. Clear the box to remove the client.</p>
+                <section class="invoice-form-section" aria-labelledby="inv-section-details">
+                    <h2 id="inv-section-details" class="invoice-form-section__title">Client &amp; dates</h2>
+                    <div class="invoice-form-meta-grid">
+                        <div class="field billo-combobox invoice-form-meta-grid__span-2" data-billo-client-combobox>
+                            <label class="label" for="invoice_client_search">Client</label>
+                            <input type="hidden" name="client_id" id="client_id" value="<?= billo_e($clientIdVal) ?>">
+                            <input class="input billo-combobox__search" type="search" id="invoice_client_search" autocomplete="off" placeholder="Search name or email…" value="<?= billo_e($selectedClientLabel) ?>">
+                            <ul class="billo-combobox__list" id="invoice-client-suggestions" role="listbox" hidden></ul>
+                            <p class="hint invoice-form-hint">Required for <strong>Sent</strong> or <strong>Paid</strong>. Optional while you’re still drafting.</p>
+                        </div>
+                        <div class="field">
+                            <label class="label" for="issue_date">Issue date <span class="label__req">*</span></label>
+                            <input class="input" id="issue_date" name="issue_date" type="date" required value="<?= billo_e($issueVal) ?>">
+                        </div>
+                        <div class="field">
+                            <label class="label" for="due_date">Due date</label>
+                            <input class="input" id="due_date" name="due_date" type="date" value="<?= billo_e($dueVal) ?>">
+                        </div>
+                        <div class="field">
+                            <label class="label" for="currency">Currency</label>
+                            <select class="input" id="currency" name="currency">
+                                <?php
+                                $opts = ['NGN', 'USD', 'GBP', 'EUR'];
+                                foreach ($opts as $o) {
+                                    $sel = $currencyVal === $o ? ' selected' : '';
+                                    echo '<option value="' . billo_e($o) . '"' . $sel . '>' . billo_e($o) . '</option>';
+                                }
+                                ?>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label class="label" for="invoice_status">Status</label>
+                            <select class="input input--emphasis" id="invoice_status" name="invoice_status">
+                                <?php
+                                $statusOpts = [
+                                    'draft' => 'Draft — work in progress',
+                                    'sent' => 'Sent — awaiting payment',
+                                    'paid' => 'Paid — settled',
+                                    'void' => 'Void — cancelled',
+                                ];
+                                foreach ($statusOpts as $val => $lab) {
+                                    $sel = $statusVal === $val ? ' selected' : '';
+                                    echo '<option value="' . billo_e($val) . '"' . $sel . '>' . billo_e($lab) . '</option>';
+                                }
+                                ?>
+                            </select>
+                            <p class="hint invoice-form-hint" id="invoice-status-hint">Sent and paid require a client. Bank details on PDFs come from <a href="<?= billo_e(billo_url('/organization#invoicing')) ?>">business settings</a>.</p>
+                        </div>
                     </div>
-                    <div class="field">
-                        <label class="label" for="issue_date">Issue date <span class="label__req">*</span></label>
-                        <input class="input" id="issue_date" name="issue_date" type="date" required value="<?= billo_e($issueVal) ?>">
-                    </div>
-                    <div class="field">
-                        <label class="label" for="due_date">Due date</label>
-                        <input class="input" id="due_date" name="due_date" type="date" value="<?= billo_e($dueVal) ?>">
-                    </div>
-                    <div class="field">
-                        <label class="label" for="currency">Currency</label>
-                        <select class="input" id="currency" name="currency">
-                            <?php
-                            $opts = ['NGN', 'USD', 'GBP', 'EUR'];
-                            foreach ($opts as $o) {
-                                $sel = $currencyVal === $o ? ' selected' : '';
-                                echo '<option value="' . billo_e($o) . '"' . $sel . '>' . billo_e($o) . '</option>';
-                            }
-                            ?>
-                        </select>
-                    </div>
-                </div>
+                </section>
 
-                <div class="field">
-                    <label class="label" for="notes">Notes (optional)</label>
-                    <textarea class="input" id="notes" name="notes" rows="3" placeholder="Payment terms, bank details, etc."><?= billo_e($notesVal) ?></textarea>
-                </div>
+                <section class="invoice-form-section" aria-labelledby="inv-section-notes">
+                    <h2 id="inv-section-notes" class="invoice-form-section__title">Notes to client</h2>
+                    <div class="field">
+                        <label class="label" for="notes">Optional message</label>
+                        <textarea class="input invoice-form-notes" id="notes" name="notes" rows="3" placeholder="e.g. Thank you for your business, PO reference, delivery terms…"><?= billo_e($notesVal) ?></textarea>
+                        <p class="hint invoice-form-hint">Payment instructions and bank lines are taken from your organization profile—not from this box.</p>
+                    </div>
+                </section>
 
                 <?php if ($docTaxSupported): ?>
-                    <div class="welcome-card invoice-tax-inline" style="padding:1rem 1.25rem;margin:0 0 1.25rem">
-                        <h2 class="invoice-lines-title" style="margin-top:0">VAT &amp; withholding</h2>
-                        <p class="hint" style="margin:0 0 1rem">Applied to the line subtotal below. VAT rate is the <strong>platform</strong> percentage from <strong>System → Tax templates</strong>; toggles default from <a href="<?= billo_e(billo_url('/organization#invoicing')) ?>">business settings</a>.</p>
+                    <section class="invoice-form-section invoice-tax-inline welcome-card" aria-labelledby="inv-tax-heading">
+                        <h2 id="inv-tax-heading" class="invoice-lines-title invoice-form-section__title">VAT &amp; withholding</h2>
+                        <p class="hint invoice-form-hint" style="margin:0 0 1rem">Applied to line subtotals. VAT % is set under <strong>System → Tax templates</strong>; defaults follow <a href="<?= billo_e(billo_url('/organization#invoicing')) ?>">business settings</a>.</p>
                         <div class="field-toggle" style="margin-bottom:0.75rem">
                             <div class="field-toggle__text">
                                 <strong class="field-toggle__label">Apply VAT</strong>
@@ -210,7 +242,7 @@ ob_start();
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                    </div>
+                    </section>
                     <script type="application/json" id="billo-invoice-wht-rates"><?= $whtRatesJson ?></script>
                     <script>
                     (function () {
@@ -229,9 +261,9 @@ ob_start();
                     </script>
                 <?php endif; ?>
 
-                <div class="invoice-lines-block">
+                <section class="invoice-form-section invoice-lines-block" aria-labelledby="inv-lines-heading">
                     <div class="invoice-lines-head">
-                        <h2 class="invoice-lines-title">Line items</h2>
+                        <h2 id="inv-lines-heading" class="invoice-lines-title">Line items</h2>
                         <button type="button" class="btn btn--secondary btn--sm" id="invoice-add-line">Add line</button>
                     </div>
                     <div class="table-wrap invoice-lines-table-wrap">
@@ -279,11 +311,11 @@ ob_start();
                             </tbody>
                         </table>
                     </div>
-                </div>
+                </section>
 
-                <div class="invoice-form-totals welcome-card" data-invoice-form-totals data-doc-tax="<?= $docTaxSupported ? '1' : '0' ?>" style="padding:1rem 1.25rem;margin:1rem 0 0;background:rgba(15,23,42,0.03)">
-                    <h2 class="invoice-lines-title" style="margin-top:0">Totals</h2>
-                    <p class="hint" style="margin:0 0 0.75rem">Updates as you edit lines<?= $docTaxSupported ? ' and tax options' : '' ?>. The saved invoice is calculated on the server the same way.</p>
+                <section class="invoice-form-section invoice-form-totals welcome-card" data-invoice-form-totals data-doc-tax="<?= $docTaxSupported ? '1' : '0' ?>" aria-labelledby="inv-totals-heading">
+                    <h2 id="inv-totals-heading" class="invoice-lines-title invoice-form-section__title">Totals</h2>
+                    <p class="hint invoice-form-hint" style="margin:0 0 0.75rem">Live preview<?= $docTaxSupported ? ' (includes tax toggles above)' : '' ?>. The server recalculates on save.</p>
                     <dl class="invoice-form-totals__dl">
                         <div class="invoice-form-totals__row">
                             <dt>Subtotal</dt>
@@ -298,10 +330,10 @@ ob_start();
                             <dd data-total-grand><strong><?= billo_e($currencyVal) ?> 0.00</strong></dd>
                         </div>
                     </dl>
-                </div>
+                </section>
 
-                <div class="form-actions">
-                    <button type="submit" class="btn btn--primary"><?= $is_edit ? 'Save changes' : 'Create draft' ?></button>
+                <div class="invoice-form-actions form-actions">
+                    <button type="submit" class="btn btn--primary btn--lg"><?= $is_edit ? 'Save invoice' : 'Save invoice' ?></button>
                 </div>
             </form>
         </div>
