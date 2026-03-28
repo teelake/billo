@@ -8,6 +8,12 @@
         return;
     }
 
+    const closeNav = () => {
+        nav.classList.remove("is-open");
+        toggle.setAttribute("aria-expanded", "false");
+        toggle.setAttribute("aria-label", "Open menu");
+    };
+
     toggle.addEventListener("click", () => {
         const open = nav.classList.toggle("is-open");
         toggle.setAttribute("aria-expanded", open ? "true" : "false");
@@ -15,11 +21,28 @@
     });
 
     nav.querySelectorAll("a").forEach((link) => {
-        link.addEventListener("click", () => {
-            nav.classList.remove("is-open");
-            toggle.setAttribute("aria-expanded", "false");
-            toggle.setAttribute("aria-label", "Open menu");
-        });
+        link.addEventListener("click", closeNav);
+    });
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && nav.classList.contains("is-open")) {
+            closeNav();
+            toggle.focus();
+        }
+    });
+
+    document.addEventListener("click", (e) => {
+        if (!nav.classList.contains("is-open")) {
+            return;
+        }
+        const t = e.target;
+        if (!(t instanceof Node)) {
+            return;
+        }
+        if (toggle.contains(t) || nav.contains(t)) {
+            return;
+        }
+        closeNav();
     });
 })();
 

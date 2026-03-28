@@ -4,19 +4,19 @@ declare(strict_types=1);
 /** @var string $title */
 $pageTitle = $title ?? billo_brand_name();
 $bodyClass = $bodyClass ?? '';
+$landingHasTrusted = $landingHasTrusted ?? false;
+$landingHasTestimonials = $landingHasTestimonials ?? false;
+$landingHasFaqs = $landingHasFaqs ?? false;
 $brandTagline = billo_brand_tagline();
-$metaDescription = $brandTagline !== ''
-    ? $brandTagline
-    : billo_landing(
-        'hero_subtitle',
-        'Professional invoicing for Nigerian businesses—get paid faster with branded documents and room to grow into deeper compliance.',
-    );
+$heroSubFallback = 'Professional invoicing for Nigerian businesses—get paid faster with branded documents and room to grow into deeper compliance.';
+$heroSubPlain = trim(preg_replace('/\s+/u', ' ', strip_tags(billo_landing('hero_subtitle', $heroSubFallback)))) ?: $heroSubFallback;
+$metaDescription = $brandTagline !== '' ? $brandTagline : $heroSubPlain;
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title><?= billo_e($pageTitle) ?></title>
     <meta name="description" content="<?= billo_e($metaDescription) ?>">
     <meta name="theme-color" content="#16A34A">
@@ -35,12 +35,18 @@ $metaDescription = $brandTagline !== ''
             <span class="nav-toggle__bar"></span>
         </button>
         <nav id="primary-nav" class="site-nav" aria-label="Primary">
-            <a class="site-nav__link" href="#features">Features</a>
-            <a class="site-nav__link" href="#compliance">Compliance</a>
-            <a class="site-nav__link" href="#pricing">Pricing</a>
-            <a class="site-nav__link" href="#trusted">Trusted by</a>
-            <a class="site-nav__link" href="#testimonials">Stories</a>
-            <a class="site-nav__link" href="#faqs">FAQs</a>
+            <a class="site-nav__link" href="<?= billo_e(billo_url('/#features')) ?>">Features</a>
+            <a class="site-nav__link" href="<?= billo_e(billo_url('/#compliance')) ?>">Compliance</a>
+            <a class="site-nav__link" href="<?= billo_e(billo_url('/#pricing')) ?>">Pricing</a>
+            <?php if ($landingHasTrusted): ?>
+                <a class="site-nav__link" href="<?= billo_e(billo_url('/#trusted')) ?>">Trusted by</a>
+            <?php endif; ?>
+            <?php if ($landingHasTestimonials): ?>
+                <a class="site-nav__link" href="<?= billo_e(billo_url('/#testimonials')) ?>">Stories</a>
+            <?php endif; ?>
+            <?php if ($landingHasFaqs): ?>
+                <a class="site-nav__link" href="<?= billo_e(billo_url('/#faqs')) ?>">FAQs</a>
+            <?php endif; ?>
             <div class="site-nav__cta">
                 <a class="btn btn--ghost" href="<?= billo_e(billo_url('/login')) ?>">Log in</a>
                 <a class="btn btn--primary" href="<?= billo_e(billo_url('/signup')) ?>"><?= billo_e(billo_landing('pricing_cta_label', 'Start free')) ?></a>
@@ -54,14 +60,16 @@ $metaDescription = $brandTagline !== ''
 <footer class="site-footer">
     <div class="container site-footer__inner">
         <div class="site-footer__brand">
-            <span class="wordmark wordmark--footer">billo</span>
+            <span class="wordmark wordmark--footer"><?= billo_e(billo_brand_name()) ?></span>
             <p class="site-footer__tagline"><?= billo_e(billo_landing('footer_tagline', 'Simple enough for a market trader. Strong enough for a CFO.')) ?></p>
         </div>
         <div class="site-footer__cols">
             <div>
                 <h3 class="site-footer__heading">Product</h3>
                 <ul class="site-footer__list">
-                    <li><a href="#features">Features</a></li>
+                    <li><a href="<?= billo_e(billo_url('/#features')) ?>">Features</a></li>
+                    <li><a href="<?= billo_e(billo_url('/#compliance')) ?>">Compliance</a></li>
+                    <li><a href="<?= billo_e(billo_url('/#pricing')) ?>">Pricing</a></li>
                     <li><a href="<?= billo_e(billo_url('/signup')) ?>">Sign up</a></li>
                 </ul>
             </div>

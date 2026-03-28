@@ -33,7 +33,7 @@ ob_start();
                 <a class="btn btn--primary btn--lg" href="<?= billo_e(billo_url('/signup')) ?>"><?= billo_e(billo_landing('hero_cta_primary', 'Start free')) ?></a>
                 <a class="btn btn--secondary btn--lg" href="<?= billo_e(billo_url('/login')) ?>"><?= billo_e(billo_landing('hero_cta_secondary', 'Log in')) ?></a>
             </div>
-            <p class="hero__trust" role="status"><?= billo_e(billo_landing('hero_trust', 'Free to start · No credit card to explore · Each organization’s data stays isolated')) ?></p>
+            <p class="hero__trust"><?= billo_e(billo_landing('hero_trust', 'Free to start · No credit card to explore · Each organization’s data stays isolated')) ?></p>
             <p class="hero__note"><?= billo_e(billo_landing('hero_note', 'Most teams issue their first invoice the same day they sign up.')) ?></p>
         </div>
         <div class="hero__visual">
@@ -259,12 +259,15 @@ ob_start();
                 }
                 ?>
                 <li class="trusted-strip__item">
+                    <?php
+                    $logoAlt = $name !== '' ? $name : 'Partner logo';
+                    ?>
                     <?php if ($href !== ''): ?>
                         <a class="trusted-strip__link" href="<?= billo_e($href) ?>" rel="noopener noreferrer" target="_blank">
-                            <img class="trusted-strip__img" src="<?= billo_e($src) ?>" alt="<?= billo_e($name) ?>" loading="lazy" decoding="async">
+                            <img class="trusted-strip__img" src="<?= billo_e($src) ?>" alt="<?= billo_e($logoAlt) ?>" width="160" height="48" loading="lazy" decoding="async">
                         </a>
                     <?php else: ?>
-                        <img class="trusted-strip__img" src="<?= billo_e($src) ?>" alt="<?= billo_e($name) ?>" loading="lazy" decoding="async">
+                        <img class="trusted-strip__img" src="<?= billo_e($src) ?>" alt="<?= billo_e($logoAlt) ?>" width="160" height="48" loading="lazy" decoding="async">
                     <?php endif; ?>
                 </li>
             <?php endforeach; ?>
@@ -338,4 +341,7 @@ ob_start();
 </section>
 <?php
 $content = ob_get_clean();
+$landingHasTrusted = count($landing_logos) > 0;
+$landingHasTestimonials = count($landing_testimonials) > 0;
+$landingHasFaqs = count($landing_faqs) > 0;
 require dirname(__DIR__) . '/layouts/main.php';
